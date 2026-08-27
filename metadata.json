@@ -1,0 +1,6 @@
+{
+  "name": "Gestão Financeira & Open Finance",
+  "description": "App para gestão de contas bancárias, cartões de crédito, investimentos, extratos bancários, Open Finance, lembretes de contas a pagar e banco de dados multi-usuário e multi-dispositivo em tempo real com Firebase Firestore",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

@@ -1,0 +1,281 @@
+{
+  "entities": {
+    "UserProfile": {
+      "title": "UserProfile",
+      "description": "User profile information",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string", "maxLength": 128 },
+        "email": { "type": "string", "maxLength": 256 },
+        "displayName": { "type": "string", "maxLength": 128 },
+        "photoURL": { "type": "string", "maxLength": 512 },
+        "createdAt": { "type": "string", "maxLength": 64 },
+        "updatedAt": { "type": "string", "maxLength": 64 }
+      },
+      "required": ["userId", "email", "createdAt"]
+    },
+    "BankAccount": {
+      "title": "BankAccount",
+      "description": "User bank account details",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128 },
+        "bankCode": { "type": "string", "maxLength": 32 },
+        "bankName": { "type": "string", "maxLength": 128 },
+        "agency": { "type": "string", "maxLength": 32 },
+        "accountNumber": { "type": "string", "maxLength": 64 },
+        "type": { "type": "string", "maxLength": 32 },
+        "initialBalance": { "type": "number" },
+        "color": { "type": "string", "maxLength": 32 },
+        "icon": { "type": "string", "maxLength": 64 },
+        "openFinanceConnected": { "type": "boolean" },
+        "lastSyncAt": { "type": "string", "maxLength": 64 },
+        "createdAt": { "type": "string", "maxLength": 64 },
+        "updatedAt": { "type": "string", "maxLength": 64 }
+      },
+      "required": ["id", "bankCode", "bankName", "agency", "accountNumber", "type", "initialBalance", "color"]
+    },
+    "BankTransaction": {
+      "title": "BankTransaction",
+      "description": "Bank account transaction record",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128 },
+        "accountId": { "type": "string", "maxLength": 128 },
+        "date": { "type": "string", "maxLength": 32 },
+        "description": { "type": "string", "maxLength": 256 },
+        "amount": { "type": "number" },
+        "category": { "type": "string", "maxLength": 64 },
+        "type": { "type": "string", "maxLength": 32 },
+        "status": { "type": "string", "maxLength": 32 },
+        "notes": { "type": "string", "maxLength": 512 },
+        "createdAt": { "type": "string", "maxLength": 64 },
+        "updatedAt": { "type": "string", "maxLength": 64 }
+      },
+      "required": ["id", "accountId", "date", "description", "amount", "category", "type", "status"]
+    },
+    "CreditCard": {
+      "title": "CreditCard",
+      "description": "User credit card details",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128 },
+        "name": { "type": "string", "maxLength": 128 },
+        "bankId": { "type": "string", "maxLength": 128 },
+        "bankName": { "type": "string", "maxLength": 128 },
+        "totalLimit": { "type": "number" },
+        "closingDay": { "type": "number" },
+        "dueDay": { "type": "number" },
+        "brand": { "type": "string", "maxLength": 32 },
+        "lastFourDigits": { "type": "string", "maxLength": 16 },
+        "color": { "type": "string", "maxLength": 32 },
+        "createdAt": { "type": "string", "maxLength": 64 },
+        "updatedAt": { "type": "string", "maxLength": 64 }
+      },
+      "required": ["id", "name", "bankName", "totalLimit", "closingDay", "dueDay", "brand", "lastFourDigits", "color"]
+    },
+    "CardTransaction": {
+      "title": "CardTransaction",
+      "description": "Credit card expense and installment records",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128 },
+        "cardId": { "type": "string", "maxLength": 128 },
+        "date": { "type": "string", "maxLength": 32 },
+        "description": { "type": "string", "maxLength": 256 },
+        "amount": { "type": "number" },
+        "category": { "type": "string", "maxLength": 64 },
+        "currentInstallment": { "type": "number" },
+        "totalInstallments": { "type": "number" },
+        "invoiceMonth": { "type": "string", "maxLength": 32 },
+        "status": { "type": "string", "maxLength": 32 },
+        "purchaseGroupId": { "type": "string", "maxLength": 128 },
+        "createdAt": { "type": "string", "maxLength": 64 },
+        "updatedAt": { "type": "string", "maxLength": 64 }
+      },
+      "required": ["id", "cardId", "date", "description", "amount", "category", "currentInstallment", "totalInstallments", "invoiceMonth", "status"]
+    },
+    "Investment": {
+      "title": "Investment",
+      "description": "User investment asset",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128 },
+        "institution": { "type": "string", "maxLength": 128 },
+        "assetName": { "type": "string", "maxLength": 128 },
+        "assetType": { "type": "string", "maxLength": 64 },
+        "initialBalance": { "type": "number" },
+        "color": { "type": "string", "maxLength": 32 },
+        "notes": { "type": "string", "maxLength": 512 },
+        "createdAt": { "type": "string", "maxLength": 64 },
+        "updatedAt": { "type": "string", "maxLength": 64 }
+      },
+      "required": ["id", "institution", "assetName", "assetType", "initialBalance", "color"]
+    },
+    "InvestmentTransaction": {
+      "title": "InvestmentTransaction",
+      "description": "Investment contributions and yields",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128 },
+        "investmentId": { "type": "string", "maxLength": 128 },
+        "date": { "type": "string", "maxLength": 32 },
+        "type": { "type": "string", "maxLength": 64 },
+        "amount": { "type": "number" },
+        "notes": { "type": "string", "maxLength": 512 },
+        "createdAt": { "type": "string", "maxLength": 64 },
+        "updatedAt": { "type": "string", "maxLength": 64 }
+      },
+      "required": ["id", "investmentId", "date", "type", "amount"]
+    },
+    "FuturePayment": {
+      "title": "FuturePayment",
+      "description": "Upcoming bills, accounts payable, and scheduled charges",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128 },
+        "dueDate": { "type": "string", "maxLength": 32 },
+        "description": { "type": "string", "maxLength": 256 },
+        "expectedAmount": { "type": "number" },
+        "category": { "type": "string", "maxLength": 64 },
+        "notes": { "type": "string", "maxLength": 512 },
+        "status": { "type": "string", "maxLength": 32 },
+        "paymentDate": { "type": "string", "maxLength": 32 },
+        "paidAmount": { "type": "number" },
+        "paidBankAccountId": { "type": "string", "maxLength": 128 },
+        "createdAt": { "type": "string", "maxLength": 64 },
+        "updatedAt": { "type": "string", "maxLength": 64 }
+      },
+      "required": ["id", "dueDate", "description", "expectedAmount", "category", "status"]
+    },
+    "OpenFinanceConnection": {
+      "title": "OpenFinanceConnection",
+      "description": "Open Finance bank integration connection",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128 },
+        "institutionCode": { "type": "string", "maxLength": 32 },
+        "institutionName": { "type": "string", "maxLength": 128 },
+        "logoColor": { "type": "string", "maxLength": 32 },
+        "status": { "type": "string", "maxLength": 32 },
+        "lastSync": { "type": "string", "maxLength": 64 },
+        "accountsLinkedCount": { "type": "number" },
+        "consentExpiresAt": { "type": "string", "maxLength": 64 },
+        "createdAt": { "type": "string", "maxLength": 64 },
+        "updatedAt": { "type": "string", "maxLength": 64 }
+      },
+      "required": ["id", "institutionCode", "institutionName", "logoColor", "status", "lastSync", "accountsLinkedCount", "consentExpiresAt"]
+    },
+    "CategoryItem": {
+      "title": "CategoryItem",
+      "description": "Customizable transaction category",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128 },
+        "name": { "type": "string", "maxLength": 128 },
+        "type": { "type": "string", "maxLength": 32 },
+        "color": { "type": "string", "maxLength": 32 },
+        "description": { "type": "string", "maxLength": 256 },
+        "isSystem": { "type": "boolean" },
+        "createdAt": { "type": "string", "maxLength": 64 },
+        "updatedAt": { "type": "string", "maxLength": 64 }
+      },
+      "required": ["id", "name", "type", "color"]
+    },
+    "NotificationSettings": {
+      "title": "NotificationSettings",
+      "description": "User notification and alert preferences",
+      "type": "object",
+      "properties": {
+        "enabled": { "type": "boolean" },
+        "anticipationDays": { "type": "number" },
+        "alertOverdue": { "type": "boolean" },
+        "alertCardInvoices": { "type": "boolean" },
+        "emailEnabled": { "type": "boolean" },
+        "emailAddress": { "type": "string", "maxLength": 256 },
+        "emailSecondary": { "type": "string", "maxLength": 256 },
+        "emailFrequency": { "type": "string", "maxLength": 32 },
+        "webhookEnabled": { "type": "boolean" },
+        "webhookUrl": { "type": "string", "maxLength": 512 },
+        "webhookFormat": { "type": "string", "maxLength": 64 },
+        "webhookAuthToken": { "type": "string", "maxLength": 256 },
+        "browserPushEnabled": { "type": "boolean" },
+        "inAppSoundEnabled": { "type": "boolean" },
+        "autoCheckOnAppOpen": { "type": "boolean" },
+        "checkIntervalMinutes": { "type": "number" },
+        "lastCheckAt": { "type": "string", "maxLength": 64 },
+        "updatedAt": { "type": "string", "maxLength": 64 }
+      },
+      "required": ["enabled", "anticipationDays", "alertOverdue", "alertCardInvoices", "emailEnabled", "emailAddress", "webhookEnabled", "webhookUrl", "webhookFormat"]
+    },
+    "NotificationLog": {
+      "title": "NotificationLog",
+      "description": "History logs of sent reminders and webhook alerts",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128 },
+        "timestamp": { "type": "string", "maxLength": 64 },
+        "channel": { "type": "string", "maxLength": 32 },
+        "recipient": { "type": "string", "maxLength": 256 },
+        "title": { "type": "string", "maxLength": 256 },
+        "message": { "type": "string", "maxLength": 2048 },
+        "paymentsCount": { "type": "number" },
+        "totalAmount": { "type": "number" },
+        "status": { "type": "string", "maxLength": 32 },
+        "httpStatus": { "type": "number" },
+        "responseMessage": { "type": "string", "maxLength": 512 }
+      },
+      "required": ["id", "timestamp", "channel", "recipient", "title", "message", "paymentsCount", "totalAmount", "status"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": "UserProfile",
+      "description": "User profile document"
+    },
+    "/users/{userId}/accounts/{accountId}": {
+      "schema": "BankAccount",
+      "description": "User bank accounts"
+    },
+    "/users/{userId}/bankTransactions/{txId}": {
+      "schema": "BankTransaction",
+      "description": "Bank account transactions"
+    },
+    "/users/{userId}/cards/{cardId}": {
+      "schema": "CreditCard",
+      "description": "User credit cards"
+    },
+    "/users/{userId}/cardTransactions/{txId}": {
+      "schema": "CardTransaction",
+      "description": "Card transactions and installments"
+    },
+    "/users/{userId}/investments/{investmentId}": {
+      "schema": "Investment",
+      "description": "User investments"
+    },
+    "/users/{userId}/investmentTransactions/{txId}": {
+      "schema": "InvestmentTransaction",
+      "description": "Investment transactions"
+    },
+    "/users/{userId}/futurePayments/{paymentId}": {
+      "schema": "FuturePayment",
+      "description": "Scheduled and future payments"
+    },
+    "/users/{userId}/openFinanceConnections/{connectionId}": {
+      "schema": "OpenFinanceConnection",
+      "description": "Open Finance bank connections"
+    },
+    "/users/{userId}/categories/{categoryId}": {
+      "schema": "CategoryItem",
+      "description": "User customized categories"
+    },
+    "/users/{userId}/notificationSettings/{settingsId}": {
+      "schema": "NotificationSettings",
+      "description": "User notification configuration"
+    },
+    "/users/{userId}/notificationLogs/{logId}": {
+      "schema": "NotificationLog",
+      "description": "User notification and alert audit logs"
+    }
+  }
+}

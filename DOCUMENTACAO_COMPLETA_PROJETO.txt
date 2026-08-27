@@ -1,0 +1,503 @@
+================================================================================
+          DOCUMENTAÇÃO TÉCNICA E ARQUITETURAL COMPLETA DO APLICATIVO
+                   FINFLOW - GESTÃO FINANCEIRA NA NUVEM
+================================================================================
+Projeto: FinFlow - Gestão Financeira Pessoal, Contas a Pagar, Extratos com IA & Open Finance
+Versão: 2.5 (Nuvem Firestore + IA Gemini + Multi-Dispositivos)
+Data de Geração: 2026-08-26
+Autor/Responsável: Norberto Bertelli (norberto.bertelli.NB@gmail.com)
+Repositório / Plataforma: Google AI Studio Build / Cloud Run / Firebase Firestore
+================================================================================
+
+--------------------------------------------------------------------------------
+ÍNDICE GERAL
+--------------------------------------------------------------------------------
+1. VISÃO GERAL E PROPÓSITO DO APLICATIVO
+2. STACK TECNOLÓGICA E BIBLIOTECAS (DEPENDÊNCIAS)
+3. ESTRUTURA COMPLETA DE ARQUIVOS E DIRETÓRIOS
+4. ARQUITETURA BACKEND E API REST (server.ts)
+5. ARQUITETURA DE DADOS NA NUVEM (Firebase Firestore & Auth)
+6. MODELO DE DADOS E TIPAGEM TYPESCRIPT (types.ts)
+7. REGRAS DE NEGÓCIO E FÓRMULAS DE CÁLCULO
+8. ESPECIFICAÇÃO DETALHADA DOS COMPONENTES E TELAS
+9. DESIGN SYSTEM, TEMA E DIRETRIZES VISUAIS (Anti-Slop)
+10. GUIA COMPLETO DE INSTALAÇÃO, CONFIGURAÇÃO E EXECUÇÃO
+11. HISTÓRICO DE PROMPTS E GUIA DE EVOLUÇÃO CONTÍNUA
+
+================================================================================
+1. VISÃO GERAL E PROPÓSITO DO APLICATIVO
+================================================================================
+O FinFlow é uma solução completa de gestão financeira pessoal e empresarial leve,
+projetada para operar em tempo real com sincronização entre múltiplos aparelhos
+(computadores, tablets e smartphones) através do Firebase Firestore.
+
+Principais Recursos do Sistema:
+- **Painel Geral (Dashboard)**: Visão consolidada de Patrimônio Líquido, Saldo Total
+  em Contas Bancárias, Faturas de Cartão de Crédito e Total Investido, além de
+  gráficos analíticos de fluxo de caixa e alocação de gastos.
+- **Contas Bancárias & Extrato Unificado**: Gerenciamento de múltiplas contas correntes,
+  poupança e carteiras digitais, com histórico de transações, filtros e conciliação.
+- **Cartões de Crédito & Faturas Parceladas**: Acompanhamento de limites, datas de
+  fechamento/vencimento, projeção de faturas futuras e detalhamento de compras parceladas.
+- **Carteira de Investimentos**: Gestão de Renda Fixa, Ações, FIIs, Fundos e Criptoativos
+  com monitoramento de valor investido vs. valor atual e rentabilidade acumulada.
+- **Contas a Pagar / Futuros Pagamentos**: Agendamento de contas e boletos com cálculo
+  dinâmico de status ("Pendente" para atrasados, "Em Aberto" para a vencer) e liquidação
+  bancária automatizada (débito instantâneo no extrato bancário).
+- **Monitoramento Diário de Alertas**: Detecção proativa de contas com vencimento
+  em menos de 3 dias, disparando alertas visuais com contagem regressiva e notificações.
+- **Leitor Inteligente de Extratos com IA (Gemini API)**: OCR e processamento semântico
+  de arquivos PDF, imagens e textos de extratos bancários e faturas, extraindo todas
+  as transações com categorização automática.
+- **Hub de Open Finance**: Painel de sincronização e status de integração bancária.
+- **Autenticação Segura & Modo Administrador**: Gate obrigatório de acesso com suporte
+  a Login Google, E-mail/Senha e Acesso Admin Master com usuário "admin" e senha "admin".
+- **Exportação Multiformato**: Geração de relatórios em PDF auditados (jsPDF + AutoTable)
+  e planilhas Excel estruturadas (XLSX).
+
+================================================================================
+2. STACK TECNOLÓGICA E BIBLIOTECAS (DEPENDÊNCIAS)
+================================================================================
+
+A. Front-End:
+- **React 19 (19.0.1)**: Biblioteca central para interfaces dinâmicas e reativas.
+- **TypeScript (5.8.2)**: Tipagem estática rigorosa para garantir estabilidade e previsibilidade.
+- **Vite (6.2.3)**: Bundler ultra-rápido para desenvolvimento e geração de builds de produção.
+- **Tailwind CSS v4 (4.1.14)**: Framework de estilização utilitária de alta performance.
+- **Lucide React (0.546.0)**: Biblioteca completa de ícones vetoriais modernos.
+- **Recharts (3.10.1)**: Biblioteca de gráficos reativos (Área, Linhas, Barras, Pizza).
+- **Motion / Framer Motion (12.23.24)**: Animações de layout, transições suaves e feedbacks.
+- **jsPDF (4.2.1) + jsPDF-AutoTable (5.0.8)**: Geração de documentos PDF formatados no cliente.
+- **XLSX / SheetJS (0.18.5)**: Leitura e geração de planilhas Excel (.xlsx, .csv).
+- **pdfjs-dist (6.2.108)**: Leitura e extração de texto direto de arquivos PDF.
+
+B. Back-End & Serviços na Nuvem:
+- **Node.js + Express (4.21.2)**: Servidor back-end em TypeScript rodando via `tsx`.
+- **Google GenAI SDK (@google/genai 2.4.0)**: Integração com modelo Gemini 3.6 Flash / Pro.
+- **Firebase SDK (12.17.1)**:
+  * **Firebase Authentication**: Gestão de identidade (Google Sign-In, Email/Password, Anônimo).
+  * **Firebase Firestore**: Banco de dados NoSQL distribuído e reativo em tempo real (`onSnapshot`).
+- **esbuild (0.25.0)**: Compilação e bundling do backend para arquivo único `dist/server.cjs`.
+
+================================================================================
+3. ESTRUTURA COMPLETA DE ARQUIVOS E DIRETÓRIOS
+================================================================================
+
+/
+├── .env.example                     # Declaração das variáveis de ambiente necessárias
+├── .gitignore                       # Arquivos e pastas ignorados pelo controle de versão
+├── DOCUMENTACAO_COMPLETA_PROJETO.txt# Esta documentação detalhada do projeto
+├── DOCUMENTACAO_PROMPTS.txt         # Histórico de prompts e templates
+├── firebase-applet-config.json      # Configuração do projeto Firebase conectado
+├── firebase-blueprint.json          # Esquema declarativo de coleções e índices Firestore
+├── firestore.rules                  # Regras de segurança de leitura/escrita do Firestore
+├── index.html                       # Entry point HTML com metatags e fontes
+├── metadata.json                    # Metadados da aplicação e permissões
+├── package.json                     # Manifesto de dependências e scripts npm
+├── server.ts                        # Servidor Express, Vite Middleware e rotas de IA
+├── tsconfig.json                    # Configurações do compilador TypeScript
+├── vite.config.ts                   # Configuração de build do Vite e Tailwind CSS
+└── src/
+    ├── App.tsx                      # Componente principal, roteamento de abas e listeners
+    ├── index.css                    # Folha de estilo global com importação Tailwind v4
+    ├── main.tsx                     # Ponto de entrada React (ReactDOM.createRoot)
+    ├── types.ts                     # Definições completas de interfaces TypeScript
+    ├── components/
+    │   ├── AuthView.tsx             # Tela de login/cadastro/admin obrigatória (Auth Gate)
+    │   ├── BankAccountsView.tsx     # Tela de contas bancárias, saldos e extratos
+    │   ├── CategoriesView.tsx       # Gestão de categorias de receitas e despesas
+    │   ├── CloudSyncBanner.tsx      # Banner superior de status da nuvem em tempo real
+    │   ├── CreditCardsView.tsx      # Gestão de cartões, faturas e parcelas futuras
+    │   ├── DashboardView.tsx        # Dashboard executivo com KPIs, gráficos e alertas
+    │   ├── ExportDropdown.tsx       # Componente de exportação (PDF / Excel / CSV)
+    │   ├── FuturePaymentsView.tsx   # Contas a pagar, cálculo de vencimento e liquidação
+    │   ├── InvestmentsView.tsx      # Carteira de investimentos e classes de ativos
+    │   ├── MultiUserSyncModal.tsx   # Painel de controle de dispositivos e status Firestore
+    │   ├── Navbar.tsx               # Barra superior de navegação, perfil e logout
+    │   ├── NotificationSettingsView.tsx # Central de configuração de alertas e histórico
+    │   ├── OpenFinanceView.tsx      # Conexões bancárias Open Finance
+    │   ├── SmartReaderView.tsx      # Leitor inteligente de extratos com IA Gemini
+    │   └── StatementAuditModal.tsx  # Modal de auditoria e conciliação de lançamentos
+    ├── context/
+    │   └── AuthContext.tsx          # Provedor global de estado de autenticação e perfil
+    ├── data/
+    │   └── initialData.ts           # Conjunto de dados estruturados para inicialização
+    ├── services/
+    │   └── firebase.ts              # SDK Firebase, inicialização, listeners e CRUD Firestore
+    └── utils/
+        ├── exportUtils.ts           # Utilitários de exportação para PDF e planilhas Excel
+        └── financeUtils.ts          # Formatadores de moeda (BRL), cálculo de dias e datas
+
+================================================================================
+4. ARQUITETURA BACKEND E API REST (server.ts)
+================================================================================
+
+O arquivo `server.ts` unifica o servidor da aplicação com as seguintes atribuições:
+
+1. **Vite Middleware em Desenvolvimento**:
+   Em ambiente local/dev (`process.env.NODE_ENV !== "production"`), o servidor executa
+   o Vite como middleware Express (`appType: "spa"`), permitindo carregamento rápido
+   e compilação de assets em tempo real. Em produção, serve os arquivos estáticos de `dist/`.
+
+2. **Endpoint de Inteligência Artificial `/api/parse-statement`**:
+   - **Método**: POST
+   - **Parâmetros**: `rawText` (texto do extrato), `targetType` ('bank' | 'card' | 'investment'),
+     `fileBase64` (arquivo codificado em Base64), `mimeType`, `fileName`.
+   - **Segurança da Chave**: O `GEMINI_API_KEY` reside exclusivamente no servidor backend
+     (`process.env.GEMINI_API_KEY`), nunca exposto no código do cliente.
+   - **Modelo Utilizado**: `gemini-3.6-flash` via `@google/genai`.
+   - **Schema Estruturado JSON**:
+     Força a IA a responder em JSON estrito contendo:
+     * `date`: String no formato "YYYY-MM-DD"
+     * `description`: Nome limpo do estabelecimento
+     * `amount`: Valor numérico da transação
+     * `isExpense`: Booleano (true para débitos/compras, false para receitas)
+     * `category`: Categoria padronizada
+     * `type`: Tipo de operação ("PIX", "TED", "Boleto", "Cartão", etc.)
+     * `currentInstallment` e `totalInstallments`: Controle de compras parceladas
+     * `invoiceMonth`: Mês de competência da fatura (YYYY-MM)
+
+3. **Endpoint de Verificação de Saúde `/api/health`**:
+   - **Método**: GET
+   - Retorna `{ status: "ok", geminiConfigured: boolean }`.
+
+================================================================================
+5. ARQUITETURA DE DADOS NA NUVEM (Firebase Firestore & Auth)
+================================================================================
+
+A. Estrutura de Coleções Firestore (Multi-Tenant por Usuário):
+Os dados de cada usuário ficam isolados sob o seu identificador único (`userId`),
+garantindo privacidade e conformidade com regras de segurança:
+
+- `/users/{userId}`: Documento mestre do usuário com `email`, `displayName`, `role`,
+  `hasInitializedData`, `lastSeededAt` e `updatedAt`.
+- `/users/{userId}/accounts/{accountId}`: Contas bancárias do usuário.
+- `/users/{userId}/bankTransactions/{transId}`: Transações bancárias e extrato unificado.
+- `/users/{userId}/cards/{cardId}`: Cartões de crédito cadastrados.
+- `/users/{userId}/cardTransactions/{transId}`: Compras e parcelas no cartão de crédito.
+- `/users/{userId}/investments/{investId}`: Ativos financeiros da carteira.
+- `/users/{userId}/investmentTransactions/{transId}`: Aportes e resgates de investimentos.
+- `/users/{userId}/futurePayments/{paymentId}`: Contas a pagar e pagamentos futuros.
+- `/users/{userId}/categories/{catId}`: Categorias personalizadas de receitas/despesas.
+- `/users/{userId}/openFinance/{connId}`: Conexões bancárias do Open Finance.
+- `/users/{userId}/devices/{deviceId}`: Dispositivos conectados do usuário.
+- `/users/{userId}/notificationSettings/{docId}`: Preferências de alertas.
+- `/users/{userId}/notificationLogs/{logId}`: Histórico de notificações disparadas.
+
+B. Regras de Segurança Firestore (firestore.rules):
+```javascript
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function isSignedIn() {
+      return request.auth != null;
+    }
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+    match /users/{userId} {
+      allow read, write: if isOwner(userId);
+      match /{subcollection}/{docId} {
+        allow read, write: if isOwner(userId);
+      }
+    }
+  }
+}
+```
+
+C. Mecanismo de Sincronização e Prevenção de Sobrescrita:
+1. Ao efetuar login, o sistema executa `checkAndSeedUserData`.
+2. Essa função consulta o Firestore; se o usuário já possuir qualquer registro gravado
+   na nuvem, o sistema **preserva integralmente a base existente** e não injeta dados de exemplo.
+3. O hook `onSnapshot` estabelece canais de WebSocket seguros que atualizam o estado
+   do React imediatamente sempre que qualquer alteração for feita em outro aparelho.
+
+D. Autenticação e Modo Administrador Master:
+- **Google Sign-In**: Login com um clique utilizando `signInWithPopup(auth, provider)`.
+- **E-mail e Senha**: Cadastro e autenticação via `signInWithEmailAndPassword` e `createUserWithEmailAndPassword`.
+- **Modo Administrador (`admin` / `admin`)**:
+  Ao fornecer usuário "admin" e senha "admin", o sistema autentica a conta master
+  `admin@finflow.app` (com provisionamento e fallback automático para autenticação anônima
+  com role 'admin'), garantindo acesso imediato ao painel de administração.
+
+================================================================================
+6. MODELO DE DADOS E TIPAGEM TYPESCRIPT (types.ts)
+================================================================================
+
+```typescript
+// Contas Bancárias
+export interface BankAccount {
+  id: string;
+  name: string;
+  bankName: string;
+  accountType: 'Corrente' | 'Poupança' | 'Investimento' | 'Carteira';
+  balance: number;
+  color: string;
+  accountNumber?: string;
+  agency?: string;
+}
+
+// Transações Bancárias (Extrato)
+export interface BankTransaction {
+  id: string;
+  accountId: string;
+  date: string; // YYYY-MM-DD
+  description: string;
+  amount: number; // Positivo para créditos, negativo para débitos
+  category: string;
+  type: 'PIX' | 'TED' | 'Boleto' | 'Cartão' | 'Transferência' | 'Rendimento' | 'Outros';
+  isExpense: boolean;
+  status: 'Confirmado' | 'Pendente';
+  reconciled?: boolean;
+}
+
+// Cartões de Crédito
+export interface CreditCard {
+  id: string;
+  name: string;
+  issuer: string;
+  limit: number;
+  closingDay: number;
+  dueDay: number;
+  color: string;
+  lastDigits: string;
+}
+
+// Transações de Cartão de Crédito
+export interface CreditCardTransaction {
+  id: string;
+  cardId: string;
+  date: string;
+  description: string;
+  amount: number;
+  category: string;
+  currentInstallment: number;
+  totalInstallments: number;
+  invoiceMonth: string; // YYYY-MM
+  status: 'Aberta' | 'Fechada' | 'Paga';
+}
+
+// Investimentos
+export interface Investment {
+  id: string;
+  name: string;
+  type: 'Renda Fixa' | 'Ações' | 'FIIs' | 'Fundos' | 'Cripto' | 'Tesouro Direto';
+  institution: string;
+  investedAmount: number;
+  currentAmount: number;
+  yieldPercent: number;
+  dueDate?: string;
+  liquidity: 'Diária' | 'No Vencimento' | 'D+1' | 'D+30';
+}
+
+// Contas a Pagar / Futuros Pagamentos
+export interface FuturePayment {
+  id: string;
+  dueDate: string; // YYYY-MM-DD
+  description: string;
+  expectedAmount: number;
+  category: string;
+  notes?: string;
+  status: 'Pendente' | 'Em Aberto' | 'Pago';
+  paidDate?: string;
+  paidFromAccountId?: string;
+  actualPaidAmount?: number;
+  recipient?: string;
+  barcode?: string;
+}
+
+// Categorias
+export interface Category {
+  id: string;
+  name: string;
+  type: 'Despesa' | 'Receita';
+  color: string;
+  icon: string;
+  monthlyBudget?: number;
+}
+```
+
+================================================================================
+7. REGRAS DE NEGÓCIO E FÓRMULAS DE CÁLCULO
+================================================================================
+
+1. **Regra de Status Dinâmico de Futuros Pagamentos**:
+   - `today = new Date().toISOString().split('T')[0]` (Normalizado em YYYY-MM-DD).
+   - Se `payment.status === 'Pago'`: Status definitivo é **Pago** (Badge Verde).
+   - Se `payment.dueDate < today`: Status é **Pendente** (Vencido - Badge Vermelho).
+   - Se `payment.dueDate >= today`: Status é **Em Aberto** (A Vencer - Badge Âmbar).
+
+2. **Regra de Liquidação de Contas a Pagar**:
+   - Quando o usuário clica em "Pagar / Liquidar Conta":
+     a) Seleciona a data efetiva e a conta bancária debitada.
+     b) Uma transação de débito com valor negativo (`-actualPaidAmount`) é criada no
+        extrato da conta selecionada com a descrição `[Pago] + Descrição`.
+     c) O saldo da conta bancária é reduzido imediatamente.
+     d) O registro em `futurePayments` é atualizado para `status: 'Pago'` ou removido
+        da fila de compromissos pendentes.
+
+3. **Cálculo de Patrimônio Líquido**:
+   - `Patrimônio Líquido = Total em Contas Bancárias + Total em Investimentos - Total de Faturas e Dívidas de Cartão`.
+
+4. **Regras Visuais Obrigatórias (Destaque em Vermelho Negrito)**:
+   - **Extratos Bancários**: Qualquer valor de débito/saída/despesa é formatado com
+     `font-bold text-red-600 dark:text-red-500` e sinal negativo explícito (`- R$ ...`).
+   - **Saldos Bancários Negativos**: Saldos finais com saldo devedor ou limite usado
+     ficam em destaque vermelho negrito.
+   - **Faturas de Cartão de Crédito**: As faturas abertas e parcelas futuras representam
+     obrigações a pagar e são grafadas em vermelho negrito com sinal negativo.
+
+5. **Sistema de Alertas Diários (< 3 Dias)**:
+   - Para cada conta com `status !== 'Pago'`:
+     `diffDays = Math.ceil((new Date(dueDate).getTime() - new Date(today).getTime()) / (1000 * 60 * 60 * 24))`
+   - Se `diffDays <= 3`: A conta entra na lista de alertas urgentes, exibindo o sino
+     notificador no cabeçalho e ativando o modal com contagem regressiva ("Vence hoje",
+     "Vence em 1 dia", "Atrasada há X dias").
+
+================================================================================
+8. ESPECIFICAÇÃO DETALHADA DOS COMPONENTES E TELAS
+================================================================================
+
+1. **`AuthView.tsx`**:
+   - Portal de entrada com tabs "Entrar", "Criar Conta" e "Admin".
+   - Botão direto "Continuar com Google" com ícone oficial.
+   - Formulários com validações de e-mail e tamanho mínimo de senha.
+   - Formulário de Administrador com suporte a credenciais `admin` / `admin`.
+
+2. **`Navbar.tsx`**:
+   - Logotipo dinâmico FinFlow com badges de status de sincronia da nuvem.
+   - Resumo rápido de Patrimônio Líquido e sino de alertas com badge numérico.
+   - Navegação pelas abas: Dashboard, Contas, Cartões, Investimentos, Futuros Pagamentos,
+     Leitor IA, Open Finance e Configurações.
+   - Menu dropdown do usuário com status de permissão (ADMIN / USUÁRIO) e botão de Logout.
+
+3. **`DashboardView.tsx`**:
+   - 4 Cards Principais de KPIs com design moderno e contrastes elevados.
+   - Banner de Alerta Urgente (quando houver contas a vencer em < 3 dias).
+   - Gráfico de Linha/Área de Fluxo de Caixa (Receitas vs Despesas dos últimos 6 meses).
+   - Gráfico de Rosca de Alocação por Categoria de Gastos.
+   - Tabela de Lançamentos Recentes com atalhos de visualização rápida.
+
+4. **`BankAccountsView.tsx`**:
+   - Grid de cartões de contas bancárias com cores personalizadas, tipo e saldo atual.
+   - Modal de Nova Conta Bancária e Edição.
+   - Tabela de Extrato Bancário Completo com busca por texto, filtro de datas e categoria.
+   - Botão de Conciliação e modal de auditoria detalhada.
+
+5. **`CreditCardsView.tsx`**:
+   - Visualização dos cartões em estilo cartão físico de alta fidelidade visual.
+   - Barra de consumo do limite (usado vs disponível).
+   - Abas de faturas por mês com detalhamento das parcelas (ex: 2/10, 3/10).
+
+6. **`InvestmentsView.tsx`**:
+   - Resumo do valor total aplicado vs valor atual com cálculo automático de rendimento (R$ e %).
+   - Gráfico de distribuição por classe de ativo (Renda Fixa, Ações, FIIs, Cripto).
+   - Tabela de ativos com indicador de liquidez e data de vencimento.
+
+7. **`FuturePaymentsView.tsx`**:
+   - KPIs de Total Pendente (Vencido) e Total Em Aberto (A Vencer).
+   - Tabela com ordenação por data de vencimento e badges de status dinâmico.
+   - Ações em cada linha: Pagar / Liquidar Conta, Editar e Excluir.
+   - Modal de Liquidação com seleção de conta de débito e valor final pago.
+
+8. **`SmartReaderView.tsx`**:
+   - Área de upload de arquivos com suporte a arrastar e soltar (Drag & Drop) ou clique.
+   - Suporte a PDF, imagens (PNG, JPG, WEBP) e colagem de texto bruto.
+   - Integração com endpoint `/api/parse-statement` usando Gemini IA.
+   - Modal de conferência prévia antes de gravar os lançamentos nas contas selecionadas.
+
+9. **`CloudSyncBanner.tsx`**:
+   - Exibição do estado da conexão com a nuvem (Online / Conectado ao Firebase).
+   - E-mail autenticado e botão para forçar sincronização ou abrir painel de dispositivos.
+
+10. **`ExportDropdown.tsx` / `exportUtils.ts`**:
+    - Menu suspenso para exportar dados para PDF formatado ou planilha Excel (.xlsx / .csv).
+
+================================================================================
+9. DESIGN SYSTEM, TEMA E DIRETRIZES VISUAIS (Anti-Slop)
+================================================================================
+- **Paleta de Cores**:
+  * Fundo Claro: `#f8fafc` (Slate 50) e `#ffffff` com bordas sutis `#e2e8f0`.
+  * Fundo Escuro: `#020617` (Slate 950) e `#0f172a` (Slate 900) com bordas `#1e293b`.
+  * Primária: Indigo `#4f46e5` e `#6366f1` para ações principais e branding.
+  * Sucesso: Emerald `#10b981` e `#059669` para receitas, lucros e conexões ativas.
+  * Alerta: Amber `#f59e0b` para contas a vencer e avisos.
+  * Perigo / Débito: Rose `#e11d48` / Red `#dc2626` em negrito para despesas e saldos negativos.
+- **Tipografia**:
+  * Escala proporcional clara com legibilidade estrita (mínimo 14px em tabelas e 16px em textos).
+  * Numerais monetários em fonte tabular monoespacada para alinhamento contábil perfeito.
+- **Micro-Interações**:
+  * Transições suaves de 150ms em hover e estados ativos.
+  * Animações de entrada suaves via `motion` nos modais e alertas.
+
+================================================================================
+10. GUIA COMPLETO DE INSTALAÇÃO, CONFIGURAÇÃO E EXECUÇÃO
+================================================================================
+
+A. Pré-requisitos:
+- Node.js versão 18 ou superior instalado.
+- Gerenciador de pacotes npm, yarn ou bun.
+- Projeto Firebase configurado com Firestore e Firebase Authentication ativados.
+- Chave de API Google Gemini (Google AI Studio) opcional para extração inteligente via IA.
+
+B. Passo a Passo de Execução Local:
+
+1. Clonar ou extrair o projeto no seu computador:
+   ```bash
+   git clone <URL_DO_REPOSITORIO>
+   cd gestao-financeira
+   ```
+
+2. Instalar todas as dependências:
+   ```bash
+   npm install
+   ```
+
+3. Configurar as variáveis de ambiente no arquivo `.env`:
+   ```env
+   GEMINI_API_KEY=sua_chave_gemini_aqui
+   ```
+
+4. Iniciar o servidor de desenvolvimento:
+   ```bash
+   npm run dev
+   ```
+   O aplicativo estará disponível em: `http://localhost:3000`
+
+5. Gerar a build de produção otimizada:
+   ```bash
+   npm run build
+   ```
+
+6. Executar o servidor compilado em produção:
+   ```bash
+   npm start
+   ```
+
+================================================================================
+11. HISTÓRICO DE PROMPTS E GUIA DE EVOLUÇÃO CONTÍNUA
+================================================================================
+
+Principais Prompts de Construção Histórica:
+
+1. **Arquitetura Base**:
+   "Crie um aplicativo completo de Gestão Financeira em React com TypeScript e Tailwind CSS com abas de Dashboard, Contas Bancárias, Cartões de Crédito, Investimentos, Futuros Pagamentos, Leitor IA de Extratos e Open Finance."
+
+2. **Regras de Contas a Pagar**:
+   "Ajuste a regra de status dos futuros pagamentos: se dueDate for menor que hoje, status deve ser 'Pendente' (Vencido); se for igual ou maior, 'Em Aberto'. Ao liquidar conta, debitar automaticamente da conta bancária e criar lançamento no extrato."
+
+3. **Sistema de Alertas < 3 Dias**:
+   "Implemente verificação diária de vencimentos a menos de 3 dias com banner no Dashboard, sino com badge e modal de alertas."
+
+4. **Estilização de Valores Negativos**:
+   "Nos extratos, cartões e contas, todos os valores negativos, saídas e faturas devedoras devem ficar em vermelho negrito."
+
+5. **Persistência na Nuvem & Multi-Dispositivos**:
+   "Integre o Firebase Firestore com listeners onSnapshot para sincronizar dados em tempo real entre celulares e computadores, bloqueando sobrescrita de dados por exemplos."
+
+6. **Tela de Autenticação & Modo Administrador**:
+   "Crie tela de login e cadastro obrigatória (Auth Gate) e forneça acesso Administrador com usuário 'admin' e senha 'admin'."
+
+================================================================================
+FIM DA DOCUMENTAÇÃO DO PROJETO FINFLOW
+================================================================================

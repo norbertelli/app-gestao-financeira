@@ -1,0 +1,111 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Default deny catch-all
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Helper functions
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() > 0 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    // Connection test document
+    match /test/{docId} {
+      allow read: if isSignedIn();
+      allow write: if false;
+    }
+
+    // User Private Tree (Complete Multi-User & Multi-Device Isolation)
+    match /users/{userId} {
+      allow get: if isOwner(userId);
+      allow list: if false;
+      allow create, update: if isOwner(userId) && isValidId(userId);
+      allow delete: if false;
+
+      // Bank Accounts
+      match /accounts/{accountId} {
+        allow get, list: if isOwner(userId);
+        allow create, update, delete: if isOwner(userId) && isValidId(accountId);
+      }
+
+      // Bank Transactions
+      match /bankTransactions/{txId} {
+        allow get, list: if isOwner(userId);
+        allow create, update, delete: if isOwner(userId) && isValidId(txId);
+      }
+
+      // Credit Cards
+      match /cards/{cardId} {
+        allow get, list: if isOwner(userId);
+        allow create, update, delete: if isOwner(userId) && isValidId(cardId);
+      }
+
+      // Card Transactions
+      match /cardTransactions/{txId} {
+        allow get, list: if isOwner(userId);
+        allow create, update, delete: if isOwner(userId) && isValidId(txId);
+      }
+
+      // Investments
+      match /investments/{investmentId} {
+        allow get, list: if isOwner(userId);
+        allow create, update, delete: if isOwner(userId) && isValidId(investmentId);
+      }
+
+      // Investment Transactions
+      match /investmentTransactions/{txId} {
+        allow get, list: if isOwner(userId);
+        allow create, update, delete: if isOwner(userId) && isValidId(txId);
+      }
+
+      // Future Payments / Contas a Pagar
+      match /futurePayments/{paymentId} {
+        allow get, list: if isOwner(userId);
+        allow create, update, delete: if isOwner(userId) && isValidId(paymentId);
+      }
+
+      // Open Finance Connections
+      match /openFinanceConnections/{connectionId} {
+        allow get, list: if isOwner(userId);
+        allow create, update, delete: if isOwner(userId) && isValidId(connectionId);
+      }
+
+      // Categories
+      match /categories/{categoryId} {
+        allow get, list: if isOwner(userId);
+        allow create, update, delete: if isOwner(userId) && isValidId(categoryId);
+      }
+
+      // Notification Settings
+      match /notificationSettings/{settingsId} {
+        allow get, list: if isOwner(userId);
+        allow create, update, delete: if isOwner(userId) && isValidId(settingsId);
+      }
+
+      // Notification Logs
+      match /notificationLogs/{logId} {
+        allow get, list: if isOwner(userId);
+        allow create, update, delete: if isOwner(userId) && isValidId(logId);
+      }
+    }
+  }
+}
