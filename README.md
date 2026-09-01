@@ -14,7 +14,9 @@ Sistema completo para controle e gestão financeira pessoal e empresarial, com s
 
 ### 2. 💳 Cartões de Crédito & Compras Parceladas
 - **Controle de Limites**: Acompanhamento do limite total, valor comprometido (fatura atual + parcelas futuras) e limite disponível em tempo real.
-- **Parcelamento Automático**: Registro de compras parceladas com distribuição automática das parcelas ao longo das faturas mensais.
+- **Lançamento Rápido de Parcelamento**: Registro de compras parceladas com atalhos de 1 clique para definir a 1ª fatura (**Mês Corrente**, **Próximo Mês** ou **Auto Fechamento**), e limpeza automática de campos.
+- **Faturas & Parcelas no Dashboard**: Seção no painel principal exibindo as faturas e parcelas do mês corrente com mini cards por cartão, busca rápida e extrato consolidado.
+- **Visualização Flexível**: Alternância entre visão mensal de faturas e tabela unificada de todas as parcelas com filtros por status.
 - **Fechamento e Vencimento**: Configuração dos dias de corte e vencimento de cada cartão.
 - **Pagamento de Fatura**: Liquidação direta da fatura debitando o montante na conta bancária de preferência.
 

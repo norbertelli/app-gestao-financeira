@@ -33,12 +33,15 @@ projetada para operar em tempo real com sincronização entre múltiplos aparelh
 
 Principais Recursos do Sistema:
 - **Painel Geral (Dashboard)**: Visão consolidada de Patrimônio Líquido, Saldo Total
-  em Contas Bancárias, Faturas de Cartão de Crédito e Total Investido, além de
-  gráficos analíticos de fluxo de caixa e alocação de gastos.
+  em Contas Bancárias, Fatura do Mês Corrente e Total Investido, além de
+  seção dedicada com extrato consolidado de faturas e parcelas do mês atual, mini cards por cartão,
+  filtros rápidos e gráficos analíticos.
 - **Contas Bancárias & Extrato Unificado**: Gerenciamento de múltiplas contas correntes,
   poupança e carteiras digitais, com histórico de transações, filtros e conciliação.
 - **Cartões de Crédito & Faturas Parceladas**: Acompanhamento de limites, datas de
-  fechamento/vencimento, projeção de faturas futuras e detalhamento de compras parceladas.
+  fechamento/vencimento, projeção de faturas futuras, lançador inteligente de compras parceladas
+  com atalhos rápidos (Mês Corrente, Próximo Mês, Auto Fechamento), limpeza automática de formulários
+  e alternância entre visão mensal e lista unificada de todas as parcelas.
 - **Carteira de Investimentos**: Gestão de Renda Fixa, Ações, FIIs, Fundos e Criptoativos
   com monitoramento de valor investido vs. valor atual e rentabilidade acumulada.
 - **Contas a Pagar / Futuros Pagamentos**: Agendamento de contas e boletos com cálculo
