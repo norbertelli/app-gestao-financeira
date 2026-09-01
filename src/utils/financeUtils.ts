@@ -75,6 +75,25 @@ export function calculateAccountFinalBalance(
 }
 
 /**
+ * Get account Overdraft Limit (Cheque Especial / LIS)
+ */
+export function calculateAccountOverdraft(account: BankAccount): number {
+  return account.overdraftLimit && account.overdraftLimit > 0 ? account.overdraftLimit : 0;
+}
+
+/**
+ * Calculate Total Available Balance: (Final Balance + Overdraft Limit)
+ */
+export function calculateAccountTotalAvailable(
+  account: BankAccount,
+  transactions: BankTransaction[]
+): number {
+  const finalBalance = calculateAccountFinalBalance(account, transactions);
+  const overdraft = calculateAccountOverdraft(account);
+  return finalBalance + overdraft;
+}
+
+/**
  * Calculate Credit Card Invoice total for a specific month YYYY-MM
  */
 export function calculateCardCurrentInvoice(
@@ -97,6 +116,29 @@ export function calculateCardTotalOutstanding(
 ): number {
   const cardTxs = cardTransactions.filter((t) => t.cardId === cardId);
   return cardTxs.reduce((sum, t) => sum + Math.abs(t.amount), 0);
+}
+
+/**
+ * Calculate Available Credit Card Limit (Limite Disponível Livre)
+ */
+export function calculateCardAvailableLimit(
+  card: CreditCard,
+  cardTransactions: CardTransaction[]
+): number {
+  const used = calculateCardTotalOutstanding(card.id, cardTransactions);
+  return Math.max(0, card.totalLimit - used);
+}
+
+/**
+ * Calculate Percentage of Credit Limit Used (0% to 100+%)
+ */
+export function calculateCardUsedLimitPercent(
+  card: CreditCard,
+  cardTransactions: CardTransaction[]
+): number {
+  if (!card.totalLimit || card.totalLimit <= 0) return 0;
+  const used = calculateCardTotalOutstanding(card.id, cardTransactions);
+  return Math.min(100, Math.max(0, (used / card.totalLimit) * 100));
 }
 
 /**

@@ -12,6 +12,7 @@ export interface BankAccount {
   accountNumber: string; // e.g., '38491-2'
   type: AccountType;
   initialBalance: number; // Saldo Inicial
+  overdraftLimit?: number; // Limite de Cheque Especial (LIS / Crédito em Conta)
   color: string;
   icon?: string;
   openFinanceConnected?: boolean;
@@ -33,7 +34,8 @@ export type TransactionCategory =
   | 'Investimentos'
   | 'Rendimento'
   | 'Transferência'
-  | 'Outros';
+  | 'Outros'
+  | string;
 
 export interface BankTransaction {
   id: string;
@@ -125,6 +127,7 @@ export interface ParsedStatementItem {
 }
 
 export type PaymentStatus = 'Pendente' | 'Pago' | 'Em Aberto';
+export type PaymentNature = 'Pagar' | 'Receber';
 
 export interface FuturePayment {
   id: string;
@@ -132,11 +135,13 @@ export interface FuturePayment {
   description: string;
   expectedAmount: number;
   category: TransactionCategory;
+  type?: PaymentNature; // 'Pagar' (Despesa / Saída) ou 'Receber' (Receita / Entrada)
+  paymentType?: PaymentNature;
   notes?: string;
   status: PaymentStatus;
-  paymentDate?: string; // YYYY-MM-DD (when paid)
-  paidAmount?: number; // actual amount paid
-  paidBankAccountId?: string; // bank account used for payment
+  paymentDate?: string; // YYYY-MM-DD (when paid/received)
+  paidAmount?: number; // actual amount paid/received
+  paidBankAccountId?: string; // bank account used for payment/deposit
 }
 
 export type NotificationChannel = 'email' | 'webhook' | 'browser' | 'in_app';

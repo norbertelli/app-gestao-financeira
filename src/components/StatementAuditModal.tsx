@@ -2,11 +2,13 @@ import React, { useState } from 'react';
 import {
   BankAccount,
   BankTransaction,
+  CategoryItem,
   CreditCard,
   CardTransaction,
   Investment,
   InvestmentTransaction,
 } from '../types';
+import { INITIAL_CATEGORIES } from '../data/initialData';
 import {
   formatCurrency,
   formatDateBR,
@@ -43,6 +45,7 @@ interface StatementAuditModalProps {
   bankAccount?: BankAccount;
   creditCard?: CreditCard;
   investment?: Investment;
+  categories?: CategoryItem[];
   bankTransactions: BankTransaction[];
   cardTransactions: CardTransaction[];
   investmentTransactions: InvestmentTransaction[];
@@ -61,6 +64,7 @@ export const StatementAuditModal: React.FC<StatementAuditModalProps> = ({
   bankAccount,
   creditCard,
   investment,
+  categories = INITIAL_CATEGORIES,
   bankTransactions,
   cardTransactions,
   investmentTransactions,
@@ -73,6 +77,7 @@ export const StatementAuditModal: React.FC<StatementAuditModalProps> = ({
 }) => {
   if (!isOpen) return null;
 
+  const activeCategories = categories && categories.length > 0 ? categories : INITIAL_CATEGORIES;
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [selectedMonth, setSelectedMonth] = useState<string>(getCurrentYearMonth());
@@ -82,7 +87,7 @@ export const StatementAuditModal: React.FC<StatementAuditModalProps> = ({
   const [newDate, setNewDate] = useState(new Date().toISOString().split('T')[0]);
   const [newDesc, setNewDesc] = useState('');
   const [newAmount, setNewAmount] = useState('');
-  const [newCategory, setNewCategory] = useState<any>('Alimentação');
+  const [newCategory, setNewCategory] = useState<any>(() => activeCategories[0]?.name || 'Outros');
   const [newType, setNewType] = useState<any>('PIX');
 
   // Filtered transactions & Balance calculations
@@ -287,18 +292,14 @@ export const StatementAuditModal: React.FC<StatementAuditModalProps> = ({
             <select
               value={selectedCategory}
               onChange={(e) => setSelectedCategory(e.target.value)}
-              className="py-1.5 px-3 text-sm bg-slate-100 dark:bg-slate-800 rounded-lg border border-transparent focus:border-indigo-500 text-slate-700 dark:text-slate-200 outline-none"
+              className="py-1.5 px-3 text-sm bg-slate-100 dark:bg-slate-800 rounded-lg border border-transparent focus:border-indigo-500 text-slate-700 dark:text-slate-200 outline-none font-medium"
             >
               <option value="all">Todas as Categorias</option>
-              <option value="Alimentação">Alimentação</option>
-              <option value="Transporte">Transporte</option>
-              <option value="Moradia">Moradia</option>
-              <option value="Saúde">Saúde</option>
-              <option value="Lazer">Lazer</option>
-              <option value="Salário">Salário</option>
-              <option value="Investimentos">Investimentos</option>
-              <option value="Tarifa/Imposto">Tarifa/Imposto</option>
-              <option value="Outros">Outros</option>
+              {activeCategories.map((cat) => (
+                <option key={cat.id} value={cat.name}>
+                  {cat.name}
+                </option>
+              ))}
             </select>
           </div>
 
@@ -390,7 +391,7 @@ export const StatementAuditModal: React.FC<StatementAuditModalProps> = ({
 
         {/* Form to add manual transaction */}
         {showAddForm && (
-          <form onSubmit={handleCreateTransaction} className="p-4 bg-indigo-50/70 dark:bg-indigo-950/30 border-b border-indigo-200 dark:border-indigo-900 grid grid-cols-1 sm:grid-cols-5 gap-3">
+          <form onSubmit={handleCreateTransaction} className="p-4 bg-indigo-50/70 dark:bg-indigo-950/30 border-b border-indigo-200 dark:border-indigo-900 grid grid-cols-1 sm:grid-cols-6 gap-3">
             <div>
               <label className="block text-xs font-semibold text-slate-600 dark:text-slate-300 mb-1">Data</label>
               <input
@@ -413,6 +414,20 @@ export const StatementAuditModal: React.FC<StatementAuditModalProps> = ({
               />
             </div>
             <div>
+              <label className="block text-xs font-semibold text-slate-600 dark:text-slate-300 mb-1">Categoria</label>
+              <select
+                value={newCategory}
+                onChange={(e) => setNewCategory(e.target.value)}
+                className="w-full px-2 py-1 text-sm bg-white dark:bg-slate-800 border rounded text-slate-800 dark:text-slate-100"
+              >
+                {activeCategories.map((cat) => (
+                  <option key={cat.id} value={cat.name}>
+                    {cat.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div>
               <label className="block text-xs font-semibold text-slate-600 dark:text-slate-300 mb-1">Valor (R$)</label>
               <input
                 type="number"
@@ -421,7 +436,7 @@ export const StatementAuditModal: React.FC<StatementAuditModalProps> = ({
                 value={newAmount}
                 onChange={(e) => setNewAmount(e.target.value)}
                 required
-                className="w-full px-2 py-1 text-sm bg-white dark:bg-slate-800 border rounded text-slate-800 dark:text-slate-100"
+                className="w-full px-2 py-1 text-sm bg-white dark:bg-slate-800 border rounded text-slate-800 dark:text-slate-100 font-bold"
               />
             </div>
             <div className="flex items-end">

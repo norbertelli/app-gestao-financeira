@@ -1,8 +1,11 @@
 import React, { useState } from 'react';
-import { BankAccount, BankTransaction, CreditCard, TransactionCategory, TransactionType } from '../types';
+import { BankAccount, BankTransaction, CategoryItem, CreditCard, TransactionCategory, TransactionType } from '../types';
+import { INITIAL_CATEGORIES } from '../data/initialData';
 import {
   formatCurrency,
   calculateAccountFinalBalance,
+  calculateAccountOverdraft,
+  calculateAccountTotalAvailable,
   formatDateBR,
   getCurrentYearMonth,
   formatMonthBR,
@@ -31,6 +34,7 @@ import {
 interface BankAccountsViewProps {
   accounts: BankAccount[];
   bankTransactions: BankTransaction[];
+  categories?: CategoryItem[];
   cards?: CreditCard[];
   onAddAccount: (account: Omit<BankAccount, 'id'>) => void;
   onEditAccount: (account: BankAccount) => void;
@@ -41,9 +45,414 @@ interface BankAccountsViewProps {
   onOpenStatementModal: (type: 'bank', entity: BankAccount) => void;
 }
 
+const BANK_PRESETS = [
+  { code: '341', name: 'Itaú Unibanco', color: '#EC7000' },
+  { code: '260', name: 'Nu Pagamentos (Nubank)', color: '#820AD1' },
+  { code: '001', name: 'Banco do Brasil', color: '#0038A8' },
+  { code: '237', name: 'Banco Bradesco', color: '#CC092F' },
+  { code: '033', name: 'Banco Santander', color: '#EC0000' },
+  { code: '104', name: 'Caixa Econômica Federal', color: '#005CA9' },
+  { code: '077', name: 'Banco Inter', color: '#FF7A00' },
+  { code: '336', name: 'Banco C6', color: '#242424' },
+  { code: '208', name: 'BTG Pactual', color: '#0A2540' },
+  { code: '748', name: 'Sicredi', color: '#007A33' },
+  { code: '756', name: 'Sicoob', color: '#003641' },
+  { code: '000', name: 'Outro Banco', color: '#4F46E5' },
+];
+
+// Isolated Sub-component: Add Account Modal
+interface AddAccountModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  onAdd: (acc: Omit<BankAccount, 'id'>) => void;
+}
+
+const AddAccountModal: React.FC<AddAccountModalProps> = ({ isOpen, onClose, onAdd }) => {
+  const [bankCode, setBankCode] = useState('');
+  const [bankName, setBankName] = useState('');
+  const [agency, setAgency] = useState('');
+  const [accountNumber, setAccountNumber] = useState('');
+  const [accType, setAccType] = useState<any>('Corrente');
+  const [initialBal, setInitialBal] = useState('0');
+  const [overdraftLimit, setOverdraftLimit] = useState('0');
+  const [color, setColor] = useState('#3B82F6');
+
+  if (!isOpen) return null;
+
+  const handleSelectPreset = (code: string) => {
+    const preset = BANK_PRESETS.find((b) => b.code === code);
+    if (preset) {
+      setBankCode(preset.code);
+      if (preset.code !== '000') {
+        setBankName(preset.name);
+        setColor(preset.color);
+      }
+    }
+  };
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!bankName.trim()) return;
+    onAdd({
+      bankCode: bankCode.trim() || '000',
+      bankName: bankName.trim(),
+      agency: agency.trim() || '0001',
+      accountNumber: accountNumber.trim() || '00000-0',
+      type: accType || 'Corrente',
+      initialBalance: parseFloat(initialBal) || 0,
+      overdraftLimit: parseFloat(overdraftLimit) || 0,
+      color: color || '#3B82F6',
+      openFinanceConnected: true,
+      lastSyncAt: new Date().toISOString(),
+    });
+    onClose();
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-xs">
+      <div className="bg-white dark:bg-slate-900 rounded-2xl p-6 max-w-md w-full border border-slate-200 dark:border-slate-800 shadow-2xl">
+        <h3 className="text-xl font-bold mb-4 text-slate-900 dark:text-slate-100">Adicionar Nova Conta Bancária</h3>
+        <form onSubmit={handleSubmit} className="space-y-3">
+          <div>
+            <label className="text-xs font-semibold text-slate-700 dark:text-slate-300">Selecione o Banco ou Preencha</label>
+            <select
+              value={BANK_PRESETS.some((b) => b.code === bankCode) ? bankCode : '000'}
+              onChange={(e) => handleSelectPreset(e.target.value)}
+              className="w-full p-2 border border-slate-200 dark:border-slate-700 rounded-xl mt-1 bg-slate-50 dark:bg-slate-800 text-sm font-medium text-slate-800 dark:text-slate-200"
+            >
+              <option value="" disabled>-- Selecione uma instituição (opcional) --</option>
+              {BANK_PRESETS.map((b) => (
+                <option key={b.code} value={b.code}>
+                  {b.code !== '000' ? `${b.code} - ${b.name}` : 'Outro Banco (Personalizado)'}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div className="grid grid-cols-3 gap-2">
+            <div className="col-span-1">
+              <label className="text-xs font-semibold text-slate-700 dark:text-slate-300">Cód. Banco</label>
+              <input
+                type="text"
+                placeholder="Ex: 341"
+                value={bankCode}
+                onChange={(e) => setBankCode(e.target.value)}
+                className="w-full p-2 border border-slate-200 dark:border-slate-700 rounded-xl mt-1 bg-slate-50 dark:bg-slate-800 text-sm"
+                required
+              />
+            </div>
+            <div className="col-span-2">
+              <label className="text-xs font-semibold text-slate-700 dark:text-slate-300">Nome do Banco</label>
+              <input
+                type="text"
+                placeholder="Ex: Itaú Unibanco"
+                value={bankName}
+                onChange={(e) => setBankName(e.target.value)}
+                className="w-full p-2 border border-slate-200 dark:border-slate-700 rounded-xl mt-1 bg-slate-50 dark:bg-slate-800 text-sm"
+                required
+              />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-2">
+            <div>
+              <label className="text-xs font-semibold text-slate-700 dark:text-slate-300">Agência</label>
+              <input
+                type="text"
+                placeholder="Ex: 0001"
+                value={agency}
+                onChange={(e) => setAgency(e.target.value)}
+                className="w-full p-2 border border-slate-200 dark:border-slate-700 rounded-xl mt-1 bg-slate-50 dark:bg-slate-800 text-sm"
+                required
+              />
+            </div>
+            <div>
+              <label className="text-xs font-semibold text-slate-700 dark:text-slate-300">Número da Conta</label>
+              <input
+                type="text"
+                placeholder="Ex: 12345-6"
+                value={accountNumber}
+                onChange={(e) => setAccountNumber(e.target.value)}
+                className="w-full p-2 border border-slate-200 dark:border-slate-700 rounded-xl mt-1 bg-slate-50 dark:bg-slate-800 text-sm"
+                required
+              />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-3 gap-2">
+            <div>
+              <label className="text-xs font-semibold text-slate-700 dark:text-slate-300">Tipo de Conta</label>
+              <select
+                value={accType}
+                onChange={(e) => setAccType(e.target.value)}
+                className="w-full p-2 border border-slate-200 dark:border-slate-700 rounded-xl mt-1 bg-slate-50 dark:bg-slate-800 text-sm font-medium"
+              >
+                <option value="Corrente">Conta Corrente</option>
+                <option value="Poupança">Conta Poupança</option>
+                <option value="Pagamentos">Conta de Pagamentos</option>
+                <option value="Salário">Conta Salário</option>
+                <option value="Outra">Outra</option>
+              </select>
+            </div>
+            <div>
+              <label className="text-xs font-semibold text-slate-700 dark:text-slate-300">Saldo Inicial (R$)</label>
+              <input
+                type="number"
+                step="0.01"
+                placeholder="0.00"
+                value={initialBal}
+                onChange={(e) => setInitialBal(e.target.value)}
+                className="w-full p-2 border border-slate-200 dark:border-slate-700 rounded-xl mt-1 bg-slate-50 dark:bg-slate-800 text-sm"
+                required
+              />
+            </div>
+            <div>
+              <label className="text-xs font-semibold text-slate-700 dark:text-slate-300">Cheque Especial (R$)</label>
+              <input
+                type="number"
+                step="0.01"
+                placeholder="0.00"
+                value={overdraftLimit}
+                onChange={(e) => setOverdraftLimit(e.target.value)}
+                className="w-full p-2 border border-slate-200 dark:border-slate-700 rounded-xl mt-1 bg-slate-50 dark:bg-slate-800 text-sm"
+              />
+            </div>
+          </div>
+
+          <div className="flex justify-end gap-2 pt-4 border-t border-slate-200 dark:border-slate-800">
+            <button
+              type="button"
+              onClick={onClose}
+              className="px-4 py-2 bg-slate-200 dark:bg-slate-800 hover:bg-slate-300 dark:hover:bg-slate-700 rounded-xl font-medium text-xs text-slate-700 dark:text-slate-300 transition-colors"
+            >
+              Cancelar
+            </button>
+            <button
+              type="submit"
+              className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-medium text-xs shadow-md transition-colors"
+            >
+              Cadastrar Conta
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+};
+
+// Isolated Sub-component: Edit Account Modal
+interface EditAccountModalProps {
+  account: BankAccount;
+  onClose: () => void;
+  onSave: (updatedAcc: BankAccount) => void;
+  onDeleteRequest: (acc: BankAccount) => void;
+}
+
+const EditAccountModal: React.FC<EditAccountModalProps> = ({
+  account,
+  onClose,
+  onSave,
+  onDeleteRequest,
+}) => {
+  const [bankCode, setBankCode] = useState(account.bankCode || '');
+  const [bankName, setBankName] = useState(account.bankName || '');
+  const [agency, setAgency] = useState(account.agency || '');
+  const [accountNumber, setAccountNumber] = useState(account.accountNumber || '');
+  const [accType, setAccType] = useState<any>(account.type || 'Corrente');
+  const [initialBal, setInitialBal] = useState(
+    account.initialBalance !== undefined ? account.initialBalance.toString() : '0'
+  );
+  const [overdraftLimit, setOverdraftLimit] = useState(
+    account.overdraftLimit !== undefined ? account.overdraftLimit.toString() : '0'
+  );
+  const [color, setColor] = useState(account.color || '#3B82F6');
+
+  React.useEffect(() => {
+    if (account) {
+      setBankCode(account.bankCode || '');
+      setBankName(account.bankName || '');
+      setAgency(account.agency || '');
+      setAccountNumber(account.accountNumber || '');
+      setAccType(account.type || 'Corrente');
+      setInitialBal(account.initialBalance !== undefined ? account.initialBalance.toString() : '0');
+      setOverdraftLimit(account.overdraftLimit !== undefined ? account.overdraftLimit.toString() : '0');
+      setColor(account.color || '#3B82F6');
+    }
+  }, [account]);
+
+  const handleSelectPreset = (code: string) => {
+    const preset = BANK_PRESETS.find((b) => b.code === code);
+    if (preset) {
+      setBankCode(preset.code);
+      if (preset.code !== '000') {
+        setBankName(preset.name);
+        setColor(preset.color);
+      }
+    }
+  };
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!bankName.trim()) return;
+    onSave({
+      ...account,
+      bankCode: bankCode.trim() || account.bankCode,
+      bankName: bankName.trim(),
+      agency: agency.trim() || account.agency,
+      accountNumber: accountNumber.trim() || account.accountNumber,
+      type: accType || 'Corrente',
+      initialBalance: parseFloat(initialBal) || 0,
+      overdraftLimit: parseFloat(overdraftLimit) || 0,
+      color: color || account.color,
+    });
+    onClose();
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-xs">
+      <div className="bg-white dark:bg-slate-900 rounded-2xl p-6 max-w-md w-full border border-slate-200 dark:border-slate-800 shadow-2xl">
+        <h3 className="text-xl font-bold mb-4 text-slate-900 dark:text-slate-100">Alterar Conta Bancária</h3>
+        <form onSubmit={handleSubmit} className="space-y-3">
+          <div>
+            <label className="text-xs font-semibold text-slate-700 dark:text-slate-300">Instituição Bancária</label>
+            <select
+              value={BANK_PRESETS.some((b) => b.code === bankCode) ? bankCode : '000'}
+              onChange={(e) => handleSelectPreset(e.target.value)}
+              className="w-full p-2 border border-slate-200 dark:border-slate-700 rounded-xl mt-1 bg-slate-50 dark:bg-slate-800 text-sm font-medium text-slate-800 dark:text-slate-200"
+            >
+              {BANK_PRESETS.map((b) => (
+                <option key={b.code} value={b.code}>
+                  {b.code !== '000' ? `${b.code} - ${b.name}` : 'Outro Banco (Personalizado)'}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div className="grid grid-cols-3 gap-2">
+            <div className="col-span-1">
+              <label className="text-xs font-semibold text-slate-700 dark:text-slate-300">Cód. Banco</label>
+              <input
+                type="text"
+                value={bankCode}
+                onChange={(e) => setBankCode(e.target.value)}
+                className="w-full p-2 border border-slate-200 dark:border-slate-700 rounded-xl mt-1 bg-slate-50 dark:bg-slate-800 text-sm"
+                required
+              />
+            </div>
+            <div className="col-span-2">
+              <label className="text-xs font-semibold text-slate-700 dark:text-slate-300">Nome do Banco</label>
+              <input
+                type="text"
+                value={bankName}
+                onChange={(e) => setBankName(e.target.value)}
+                className="w-full p-2 border border-slate-200 dark:border-slate-700 rounded-xl mt-1 bg-slate-50 dark:bg-slate-800 text-sm"
+                required
+              />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-2">
+            <div>
+              <label className="text-xs font-semibold text-slate-700 dark:text-slate-300">Agência</label>
+              <input
+                type="text"
+                value={agency}
+                onChange={(e) => setAgency(e.target.value)}
+                className="w-full p-2 border border-slate-200 dark:border-slate-700 rounded-xl mt-1 bg-slate-50 dark:bg-slate-800 text-sm"
+                required
+              />
+            </div>
+            <div>
+              <label className="text-xs font-semibold text-slate-700 dark:text-slate-300">Número da Conta</label>
+              <input
+                type="text"
+                value={accountNumber}
+                onChange={(e) => setAccountNumber(e.target.value)}
+                className="w-full p-2 border border-slate-200 dark:border-slate-700 rounded-xl mt-1 bg-slate-50 dark:bg-slate-800 text-sm"
+                required
+              />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-3 gap-2">
+            <div>
+              <label className="text-xs font-semibold text-slate-700 dark:text-slate-300">Tipo de Conta</label>
+              <select
+                value={accType}
+                onChange={(e) => setAccType(e.target.value)}
+                className="w-full p-2 border border-slate-200 dark:border-slate-700 rounded-xl mt-1 bg-slate-50 dark:bg-slate-800 text-sm font-medium"
+              >
+                <option value="Corrente">Conta Corrente</option>
+                <option value="Poupança">Conta Poupança</option>
+                <option value="Pagamentos">Conta de Pagamentos</option>
+                <option value="Salário">Conta Salário</option>
+                <option value="Outra">Outra</option>
+              </select>
+            </div>
+            <div>
+              <label className="text-xs font-semibold text-slate-700 dark:text-slate-300">Saldo Inicial (R$)</label>
+              <input
+                type="number"
+                step="0.01"
+                value={initialBal}
+                onChange={(e) => setInitialBal(e.target.value)}
+                className="w-full p-2 border border-slate-200 dark:border-slate-700 rounded-xl mt-1 bg-slate-50 dark:bg-slate-800 text-sm"
+                required
+              />
+            </div>
+            <div>
+              <label className="text-xs font-semibold text-slate-700 dark:text-slate-300">Cheque Especial (R$)</label>
+              <input
+                type="number"
+                step="0.01"
+                placeholder="0.00"
+                value={overdraftLimit}
+                onChange={(e) => setOverdraftLimit(e.target.value)}
+                className="w-full p-2 border border-slate-200 dark:border-slate-700 rounded-xl mt-1 bg-slate-50 dark:bg-slate-800 text-sm"
+              />
+            </div>
+          </div>
+
+          <div className="flex items-center justify-between gap-2 pt-4 border-t border-slate-200 dark:border-slate-800">
+            <button
+              type="button"
+              onClick={() => {
+                const acc = account;
+                onClose();
+                onDeleteRequest(acc);
+              }}
+              className="px-3 py-2 bg-rose-50 hover:bg-rose-100 text-rose-600 dark:bg-rose-950/40 dark:hover:bg-rose-900/60 dark:text-rose-400 rounded-xl font-semibold text-xs transition-colors flex items-center gap-1.5"
+            >
+              <Trash2 className="w-3.5 h-3.5" />
+              <span>Excluir Conta</span>
+            </button>
+
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={onClose}
+                className="px-4 py-2 bg-slate-200 dark:bg-slate-800 hover:bg-slate-300 dark:hover:bg-slate-700 rounded-xl font-medium text-xs text-slate-700 dark:text-slate-300 transition-colors"
+              >
+                Cancelar
+              </button>
+              <button
+                type="submit"
+                className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-medium text-xs shadow-md transition-colors"
+              >
+                Salvar Alterações
+              </button>
+            </div>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+};
+
 export const BankAccountsView: React.FC<BankAccountsViewProps> = ({
   accounts,
   bankTransactions,
+  categories = INITIAL_CATEGORIES,
   cards = [],
   onAddAccount,
   onEditAccount,
@@ -53,6 +462,7 @@ export const BankAccountsView: React.FC<BankAccountsViewProps> = ({
   onDeleteTransaction,
   onOpenStatementModal,
 }) => {
+  const activeCategories = categories && categories.length > 0 ? categories : INITIAL_CATEGORIES;
   const [selectedAccountId, setSelectedAccountId] = useState<string>(accounts[0]?.id || '');
   const [showAddAccModal, setShowAddAccModal] = useState(false);
   const [editingAccount, setEditingAccount] = useState<BankAccount | null>(null);
@@ -64,15 +474,6 @@ export const BankAccountsView: React.FC<BankAccountsViewProps> = ({
   // Transaction modals
   const [showAddTxModal, setShowAddTxModal] = useState(false);
   const [editingTransaction, setEditingTransaction] = useState<BankTransaction | null>(null);
-
-  // Account Form state
-  const [bankCode, setBankCode] = useState('341');
-  const [bankName, setBankName] = useState('Itaú Unibanco');
-  const [agency, setAgency] = useState('0001');
-  const [accountNumber, setAccountNumber] = useState('12345-6');
-  const [accType, setAccType] = useState<any>('Corrente');
-  const [initialBal, setInitialBal] = useState('1000');
-  const [color, setColor] = useState('#3B82F6');
 
   // Transaction Form state
   const [txDate, setTxDate] = useState(new Date().toISOString().split('T')[0]);
@@ -89,6 +490,15 @@ export const BankAccountsView: React.FC<BankAccountsViewProps> = ({
   const [selectedMonth, setSelectedMonth] = useState<string>('all');
 
   const selectedAccount = accounts.find((a) => a.id === selectedAccountId) || accounts[0];
+
+  const handleOpenAddAccount = () => {
+    setEditingAccount(null);
+    setShowAddAccModal(true);
+  };
+
+  const handleOpenEditAccount = (acc: BankAccount) => {
+    setEditingAccount(acc);
+  };
 
   // Filtered transactions for selected account
   const accountTransactions = bankTransactions.filter((t) => t.accountId === selectedAccount?.id);
@@ -169,49 +579,6 @@ export const BankAccountsView: React.FC<BankAccountsViewProps> = ({
     );
   };
 
-  const handleCreateAccount = (e: React.FormEvent) => {
-    e.preventDefault();
-    onAddAccount({
-      bankCode,
-      bankName,
-      agency,
-      accountNumber,
-      type: accType,
-      initialBalance: parseFloat(initialBal) || 0,
-      color,
-      openFinanceConnected: true,
-      lastSyncAt: new Date().toISOString(),
-    });
-    setShowAddAccModal(false);
-  };
-
-  const handleOpenEditAccount = (acc: BankAccount) => {
-    setEditingAccount(acc);
-    setBankCode(acc.bankCode);
-    setBankName(acc.bankName);
-    setAgency(acc.agency);
-    setAccountNumber(acc.accountNumber);
-    setAccType(acc.type);
-    setInitialBal(acc.initialBalance.toString());
-    setColor(acc.color);
-  };
-
-  const handleSaveEditAccount = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!editingAccount) return;
-    onEditAccount({
-      ...editingAccount,
-      bankCode,
-      bankName,
-      agency,
-      accountNumber,
-      type: accType,
-      initialBalance: parseFloat(initialBal) || 0,
-      color,
-    });
-    setEditingAccount(null);
-  };
-
   // Transaction Handlers
   const handleOpenAddTx = () => {
     setTxDate(new Date().toISOString().split('T')[0]);
@@ -285,7 +652,7 @@ export const BankAccountsView: React.FC<BankAccountsViewProps> = ({
         </div>
 
         <button
-          onClick={() => setShowAddAccModal(true)}
+          onClick={handleOpenAddAccount}
           className="inline-flex items-center gap-2 px-4 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-semibold text-sm transition-all shadow-md shadow-indigo-900/20"
         >
           <Plus className="w-4 h-4" />
@@ -304,7 +671,7 @@ export const BankAccountsView: React.FC<BankAccountsViewProps> = ({
             Todas as contas foram excluídas com sucesso. Clique abaixo para cadastrar uma nova conta.
           </p>
           <button
-            onClick={() => setShowAddAccModal(true)}
+            onClick={handleOpenAddAccount}
             className="inline-flex items-center gap-2 px-4 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-semibold text-sm transition-all shadow-md"
           >
             <Plus className="w-4 h-4" />
@@ -315,6 +682,8 @@ export const BankAccountsView: React.FC<BankAccountsViewProps> = ({
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           {accounts.map((acc) => {
             const finalBal = calculateAccountFinalBalance(acc, bankTransactions);
+            const overdraft = calculateAccountOverdraft(acc);
+            const totalAvail = finalBal + overdraft;
             const isSelected = acc.id === selectedAccountId;
 
             return (
@@ -363,14 +732,32 @@ export const BankAccountsView: React.FC<BankAccountsViewProps> = ({
                   </p>
                 </div>
 
-                <div className="mt-4 pt-3 border-t border-slate-700/40">
-                  <span className="text-[11px] opacity-70 block uppercase tracking-wider">
-                    Saldo Final Calculado
-                  </span>
-                  <span className={`text-xl font-black ${finalBal < 0 ? 'text-red-500 font-bold' : 'text-emerald-400'}`}>
-                    {formatCurrency(finalBal)}
-                  </span>
-                  <span className={`text-[10px] opacity-60 block mt-0.5 ${acc.initialBalance < 0 ? 'text-red-400 font-bold' : ''}`}>
+                <div className="mt-4 pt-3 border-t border-slate-700/40 space-y-1.5">
+                  <div className="flex items-baseline justify-between">
+                    <span className="text-[11px] opacity-70 uppercase tracking-wider">
+                      Saldo em Conta
+                    </span>
+                    <span className={`text-lg font-black ${finalBal < 0 ? 'text-red-500 font-bold' : isSelected ? 'text-emerald-400' : 'text-emerald-600 dark:text-emerald-400'}`}>
+                      {formatCurrency(finalBal)}
+                    </span>
+                  </div>
+
+                  {overdraft > 0 && (
+                    <>
+                      <div className="flex items-center justify-between text-xs opacity-80">
+                        <span>Cheque Especial:</span>
+                        <span className="font-semibold text-amber-500 dark:text-amber-400">+{formatCurrency(overdraft)}</span>
+                      </div>
+                      <div className="flex items-center justify-between pt-1 border-t border-dashed border-slate-700/30 text-xs">
+                        <span className="font-bold opacity-90">Saldo + Cheque Especial:</span>
+                        <span className={`font-black ${totalAvail < 0 ? 'text-red-500 font-bold' : isSelected ? 'text-cyan-300' : 'text-indigo-600 dark:text-cyan-400'}`}>
+                          {formatCurrency(totalAvail)}
+                        </span>
+                      </div>
+                    </>
+                  )}
+
+                  <span className={`text-[10px] opacity-60 block pt-0.5 ${acc.initialBalance < 0 ? 'text-red-400 font-bold' : ''}`}>
                     Saldo Inicial: {formatCurrency(acc.initialBalance)}
                   </span>
                 </div>
@@ -394,6 +781,34 @@ export const BankAccountsView: React.FC<BankAccountsViewProps> = ({
               <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
                 Agência {selectedAccount.agency} | Conta {selectedAccount.accountNumber} ({selectedAccount.type})
               </p>
+
+              {/* Account Quick Balance Pill Group */}
+              <div className="flex flex-wrap items-center gap-2 mt-3">
+                <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 text-xs">
+                  <span className="text-emerald-700 dark:text-emerald-400 font-medium">Saldo em Conta:</span>
+                  <span className={`font-black ${calculatedFinalBal < 0 ? 'text-red-500 font-bold' : 'text-emerald-700 dark:text-emerald-300'}`}>
+                    {formatCurrency(calculatedFinalBal)}
+                  </span>
+                </div>
+
+                {calculateAccountOverdraft(selectedAccount) > 0 && (
+                  <>
+                    <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800 text-xs">
+                      <span className="text-amber-700 dark:text-amber-400 font-medium">Cheque Especial:</span>
+                      <span className="font-bold text-amber-800 dark:text-amber-300">
+                        +{formatCurrency(calculateAccountOverdraft(selectedAccount))}
+                      </span>
+                    </div>
+
+                    <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-indigo-50 dark:bg-indigo-950/40 border border-indigo-200 dark:border-indigo-800 text-xs">
+                      <span className="text-indigo-700 dark:text-indigo-400 font-bold">Saldo + Cheque Especial:</span>
+                      <span className={`font-black ${(calculatedFinalBal + calculateAccountOverdraft(selectedAccount)) < 0 ? 'text-red-500 font-bold' : 'text-indigo-700 dark:text-indigo-300'}`}>
+                        {formatCurrency(calculatedFinalBal + calculateAccountOverdraft(selectedAccount))}
+                      </span>
+                    </div>
+                  </>
+                )}
+              </div>
             </div>
 
             <div className="flex flex-wrap items-center gap-2">
@@ -460,17 +875,11 @@ export const BankAccountsView: React.FC<BankAccountsViewProps> = ({
                 className="px-3 py-1.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs text-slate-700 dark:text-slate-300 font-medium"
               >
                 <option value="all">Todas Categorias</option>
-                <option value="Salário/Renda">Salário/Renda</option>
-                <option value="Alimentação">Alimentação</option>
-                <option value="Transporte">Transporte</option>
-                <option value="Moradia">Moradia</option>
-                <option value="Saúde">Saúde</option>
-                <option value="Educação">Educação</option>
-                <option value="Lazer">Lazer</option>
-                <option value="Investimentos">Investimentos</option>
-                <option value="Transferência">Transferência</option>
-                <option value="Tarifa/Imposto">Tarifa/Imposto</option>
-                <option value="Outros">Outros</option>
+                {activeCategories.map((cat) => (
+                  <option key={cat.id} value={cat.name}>
+                    {cat.name}
+                  </option>
+                ))}
               </select>
 
               {/* Type */}
@@ -623,184 +1032,24 @@ export const BankAccountsView: React.FC<BankAccountsViewProps> = ({
       )}
 
       {/* Modal Add Account */}
-      {showAddAccModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-          <div className="bg-white dark:bg-slate-900 rounded-2xl p-6 max-w-md w-full border shadow-xl">
-            <h3 className="text-xl font-bold mb-4">Adicionar Nova Conta Bancária</h3>
-            <form onSubmit={handleCreateAccount} className="space-y-3">
-              <div>
-                <label className="text-xs font-semibold">Código do Banco (ex: 341)</label>
-                <input
-                  type="text"
-                  value={bankCode}
-                  onChange={(e) => setBankCode(e.target.value)}
-                  className="w-full p-2 border rounded mt-1 bg-slate-50 dark:bg-slate-800"
-                  required
-                />
-              </div>
-
-              <div>
-                <label className="text-xs font-semibold">Nome do Banco</label>
-                <input
-                  type="text"
-                  value={bankName}
-                  onChange={(e) => setBankName(e.target.value)}
-                  className="w-full p-2 border rounded mt-1 bg-slate-50 dark:bg-slate-800"
-                  required
-                />
-              </div>
-
-              <div className="grid grid-cols-2 gap-2">
-                <div>
-                  <label className="text-xs font-semibold">Agência</label>
-                  <input
-                    type="text"
-                    value={agency}
-                    onChange={(e) => setAgency(e.target.value)}
-                    className="w-full p-2 border rounded mt-1 bg-slate-50 dark:bg-slate-800"
-                    required
-                  />
-                </div>
-                <div>
-                  <label className="text-xs font-semibold">Número da Conta</label>
-                  <input
-                    type="text"
-                    value={accountNumber}
-                    onChange={(e) => setAccountNumber(e.target.value)}
-                    className="w-full p-2 border rounded mt-1 bg-slate-50 dark:bg-slate-800"
-                    required
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label className="text-xs font-semibold">Saldo Inicial (R$)</label>
-                <input
-                  type="number"
-                  step="0.01"
-                  value={initialBal}
-                  onChange={(e) => setInitialBal(e.target.value)}
-                  className="w-full p-2 border rounded mt-1 bg-slate-50 dark:bg-slate-800"
-                  required
-                />
-              </div>
-
-              <div className="flex justify-end gap-2 pt-4">
-                <button
-                  type="button"
-                  onClick={() => setShowAddAccModal(false)}
-                  className="px-4 py-2 bg-slate-200 dark:bg-slate-800 rounded font-medium text-xs"
-                >
-                  Cancelar
-                </button>
-                <button
-                  type="submit"
-                  className="px-4 py-2 bg-indigo-600 text-white rounded font-medium text-xs shadow-md"
-                >
-                  Cadastrar Conta
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
+      <AddAccountModal
+        isOpen={showAddAccModal}
+        onClose={() => setShowAddAccModal(false)}
+        onAdd={onAddAccount}
+      />
 
       {/* Modal Edit Account */}
       {editingAccount && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-          <div className="bg-white dark:bg-slate-900 rounded-2xl p-6 max-w-md w-full border shadow-xl">
-            <h3 className="text-xl font-bold mb-4">Alterar Conta Bancária</h3>
-            <form onSubmit={handleSaveEditAccount} className="space-y-3">
-              <div>
-                <label className="text-xs font-semibold">Código do Banco</label>
-                <input
-                  type="text"
-                  value={bankCode}
-                  onChange={(e) => setBankCode(e.target.value)}
-                  className="w-full p-2 border rounded mt-1 bg-slate-50 dark:bg-slate-800"
-                  required
-                />
-              </div>
-
-              <div>
-                <label className="text-xs font-semibold">Nome do Banco</label>
-                <input
-                  type="text"
-                  value={bankName}
-                  onChange={(e) => setBankName(e.target.value)}
-                  className="w-full p-2 border rounded mt-1 bg-slate-50 dark:bg-slate-800"
-                  required
-                />
-              </div>
-
-              <div className="grid grid-cols-2 gap-2">
-                <div>
-                  <label className="text-xs font-semibold">Agência</label>
-                  <input
-                    type="text"
-                    value={agency}
-                    onChange={(e) => setAgency(e.target.value)}
-                    className="w-full p-2 border rounded mt-1 bg-slate-50 dark:bg-slate-800"
-                    required
-                  />
-                </div>
-                <div>
-                  <label className="text-xs font-semibold">Número da Conta</label>
-                  <input
-                    type="text"
-                    value={accountNumber}
-                    onChange={(e) => setAccountNumber(e.target.value)}
-                    className="w-full p-2 border rounded mt-1 bg-slate-50 dark:bg-slate-800"
-                    required
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label className="text-xs font-semibold">Saldo Inicial (R$)</label>
-                <input
-                  type="number"
-                  step="0.01"
-                  value={initialBal}
-                  onChange={(e) => setInitialBal(e.target.value)}
-                  className="w-full p-2 border rounded mt-1 bg-slate-50 dark:bg-slate-800"
-                  required
-                />
-              </div>
-
-              <div className="flex items-center justify-between gap-2 pt-4 border-t border-slate-200 dark:border-slate-800">
-                <button
-                  type="button"
-                  onClick={() => {
-                    const acc = editingAccount;
-                    setEditingAccount(null);
-                    setAccountToDelete(acc);
-                  }}
-                  className="px-3 py-2 bg-rose-50 hover:bg-rose-100 text-rose-600 dark:bg-rose-950/40 dark:hover:bg-rose-900/60 dark:text-rose-400 rounded-xl font-semibold text-xs transition-colors flex items-center gap-1.5"
-                >
-                  <Trash2 className="w-3.5 h-3.5" />
-                  <span>Excluir Conta</span>
-                </button>
-
-                <div className="flex items-center gap-2">
-                  <button
-                    type="button"
-                    onClick={() => setEditingAccount(null)}
-                    className="px-4 py-2 bg-slate-200 dark:bg-slate-800 rounded-xl font-medium text-xs"
-                  >
-                    Cancelar
-                  </button>
-                  <button
-                    type="submit"
-                    className="px-4 py-2 bg-indigo-600 text-white rounded-xl font-medium text-xs shadow-md"
-                  >
-                    Salvar Alterações
-                  </button>
-                </div>
-              </div>
-            </form>
-          </div>
-        </div>
+        <EditAccountModal
+          key={editingAccount.id}
+          account={editingAccount}
+          onClose={() => setEditingAccount(null)}
+          onSave={onEditAccount}
+          onDeleteRequest={(acc) => {
+            setEditingAccount(null);
+            setAccountToDelete(acc);
+          }}
+        />
       )}
 
       {/* Modal Add / Edit Transaction */}
@@ -866,18 +1115,17 @@ export const BankAccountsView: React.FC<BankAccountsViewProps> = ({
                   <label className="text-xs font-semibold">Categoria</label>
                   <select
                     value={txCategory}
-                    onChange={(e) => setTxCategory(e.target.value as any)}
+                    onChange={(e) => setTxCategory(e.target.value)}
                     className="w-full p-2 border rounded mt-1 bg-slate-50 dark:bg-slate-800 text-sm"
                   >
-                    <option value="Alimentação">Alimentação</option>
-                    <option value="Transporte">Transporte</option>
-                    <option value="Moradia">Moradia</option>
-                    <option value="Saúde">Saúde</option>
-                    <option value="Lazer">Lazer</option>
-                    <option value="Salário">Salário</option>
-                    <option value="Serviços">Serviços</option>
-                    <option value="Tarifa/Imposto">Tarifa/Imposto</option>
-                    <option value="Outros">Outros</option>
+                    {activeCategories.map((cat) => (
+                      <option key={cat.id} value={cat.name}>
+                        {cat.name} ({cat.type})
+                      </option>
+                    ))}
+                    {!activeCategories.some((c) => c.name === txCategory) && txCategory && (
+                      <option value={txCategory}>{txCategory}</option>
+                    )}
                   </select>
                 </div>
 

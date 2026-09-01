@@ -12,8 +12,11 @@ import {
   formatCurrency,
   formatDateBR,
   calculateAccountFinalBalance,
+  calculateAccountOverdraft,
+  calculateAccountTotalAvailable,
   calculateCardCurrentInvoice,
   calculateCardTotalOutstanding,
+  calculateCardAvailableLimit,
   calculateInvestmentCurrentBalance,
   calculateTotalNetWorth,
   getCurrentYearMonth,
@@ -112,6 +115,12 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
     cardTransactions,
     investments,
     investmentTransactions
+  );
+
+  // Total Overdraft Limit across all bank accounts
+  const totalOverdraftLimit = accounts.reduce(
+    (sum, acc) => sum + (acc.overdraftLimit && acc.overdraftLimit > 0 ? acc.overdraftLimit : 0),
+    0
   );
 
   // Calculate projected card invoice debts for future months
@@ -280,9 +289,20 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           <div className={`text-2xl sm:text-3xl font-black ${totalAccountsBalance < 0 ? 'text-red-600 dark:text-red-500 font-bold' : 'text-slate-900 dark:text-slate-100'}`}>
             {formatCurrency(totalAccountsBalance)}
           </div>
-          <p className={`text-xs mt-2 font-medium ${totalAccountsBalance < 0 ? 'text-red-600 dark:text-red-400' : 'text-blue-600 dark:text-blue-400'}`}>
-            {accounts.length} contas bancárias ativas
-          </p>
+          {totalOverdraftLimit > 0 ? (
+            <div className="mt-2 text-xs space-y-0.5">
+              <span className="text-amber-600 dark:text-amber-400 font-semibold block">
+                +{formatCurrency(totalOverdraftLimit)} cheque especial
+              </span>
+              <span className="text-slate-500 dark:text-slate-400 font-medium block">
+                Saldo + Cheque: <strong className="text-slate-800 dark:text-slate-200">{formatCurrency(totalAccountsBalance + totalOverdraftLimit)}</strong>
+              </span>
+            </div>
+          ) : (
+            <p className={`text-xs mt-2 font-medium ${totalAccountsBalance < 0 ? 'text-red-600 dark:text-red-400' : 'text-blue-600 dark:text-blue-400'}`}>
+              {accounts.length} contas bancárias ativas
+            </p>
+          )}
         </div>
 
         {/* Total Credit Cards Outstanding Debt */}
@@ -344,8 +364,10 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                 <th className="py-3 px-4">Agência & Conta</th>
                 <th className="py-3 px-4">Tipo</th>
                 <th className="py-3 px-4 text-right">Saldo Inicial</th>
-                <th className="py-3 px-4 text-right">Movimentação Extrato</th>
-                <th className="py-3 px-4 text-right">Saldo Final Calculado</th>
+                <th className="py-3 px-4 text-right">Movimentação</th>
+                <th className="py-3 px-4 text-right">Saldo em Conta</th>
+                <th className="py-3 px-4 text-right">Cheque Especial</th>
+                <th className="py-3 px-4 text-right">Saldo + Cheque Especial</th>
                 <th className="py-3 px-4 text-center">Conferência</th>
               </tr>
             </thead>
@@ -354,6 +376,8 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                 const txs = bankTransactions.filter((t) => t.accountId === acc.id);
                 const txSum = txs.reduce((sum, t) => sum + t.amount, 0);
                 const finalBal = acc.initialBalance + txSum;
+                const overdraft = calculateAccountOverdraft(acc);
+                const totalAvail = finalBal + overdraft;
 
                 return (
                   <tr
@@ -394,8 +418,16 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                       {txSum >= 0 ? `+${formatCurrency(txSum)}` : formatCurrency(txSum)}
                     </td>
 
-                    <td className="py-3.5 px-4 text-right font-black text-slate-900 dark:text-slate-100 whitespace-nowrap text-base group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors">
+                    <td className={`py-3.5 px-4 text-right font-black whitespace-nowrap text-base ${finalBal < 0 ? 'text-red-500 font-bold' : 'text-slate-900 dark:text-slate-100'}`}>
                       {formatCurrency(finalBal)}
+                    </td>
+
+                    <td className="py-3.5 px-4 text-right font-semibold text-amber-600 dark:text-amber-400 whitespace-nowrap">
+                      {overdraft > 0 ? `+${formatCurrency(overdraft)}` : '-'}
+                    </td>
+
+                    <td className={`py-3.5 px-4 text-right font-black whitespace-nowrap text-base group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors ${totalAvail < 0 ? 'text-red-500 font-bold' : 'text-indigo-600 dark:text-indigo-400'}`}>
+                      {formatCurrency(totalAvail)}
                     </td>
 
                     <td className="py-3.5 px-4 text-center">
@@ -521,6 +553,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                   <th className="py-3 px-4">Melhor Dia</th>
                   <th className="py-3 px-4">Vencimento</th>
                   <th className="py-3 px-4 text-right">Limite Total</th>
+                  <th className="py-3 px-4 text-right">Limite Disp.</th>
                   <th className="py-3 px-4 text-right">Fatura Atual ({formatMonthBR(currentMonth)})</th>
                   <th className="py-3 px-4 text-center">Ações</th>
                 </tr>
@@ -528,6 +561,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
                 {cards.map((card) => {
                   const currentInvoice = calculateCardCurrentInvoice(card.id, cardTransactions, currentMonth);
+                  const availableLimit = calculateCardAvailableLimit(card, cardTransactions);
 
                   return (
                     <tr
@@ -560,6 +594,10 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
 
                       <td className="py-3.5 px-4 text-right font-medium text-slate-600 dark:text-slate-400 whitespace-nowrap">
                         {formatCurrency(card.totalLimit)}
+                      </td>
+
+                      <td className="py-3.5 px-4 text-right font-bold text-emerald-600 dark:text-emerald-400 whitespace-nowrap">
+                        {formatCurrency(availableLimit)}
                       </td>
 
                       <td className="py-3.5 px-4 text-right font-black text-red-600 dark:text-red-500 font-bold whitespace-nowrap text-base">

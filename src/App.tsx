@@ -340,17 +340,15 @@ export default function App() {
     };
     if (user) {
       saveBankAccountDoc(user.uid, newAcc);
-    } else {
-      setAccounts((prev) => [...prev, newAcc]);
     }
+    setAccounts((prev) => [...prev, newAcc]);
   };
 
   const handleEditAccount = (updatedAcc: BankAccount) => {
     if (user) {
       saveBankAccountDoc(user.uid, updatedAcc);
-    } else {
-      setAccounts((prev) => prev.map((a) => (a.id === updatedAcc.id ? updatedAcc : a)));
     }
+    setAccounts((prev) => prev.map((a) => (a.id === updatedAcc.id ? updatedAcc : a)));
   };
 
   const handleDeleteAccount = (id: string) => {
@@ -563,25 +561,39 @@ export default function App() {
 
     const targetAccountId = accountId || accounts[0]?.id || '';
 
-    // 1. Add debit transaction to Bank Account
+    // Check if this is a receipt (positive) or a payment (negative)
+    const isReceber = pmt.type === 'Receber' || pmt.paymentType === 'Receber';
+    const finalVal = Math.abs(paidAmount || pmt.expectedAmount);
+    const transactionAmount = isReceber ? finalVal : -finalVal;
+    const descPrefix = isReceber ? '[Recebido]' : '[Pago]';
+    const defaultTxType = isReceber ? 'PIX' : 'Boleto';
+
+    // 1. Add credit (positive) or debit (negative) transaction to Bank Account
     const newBankTx: BankTransaction = {
       id: `tx_pay_${Date.now()}_${Math.random().toString(36).substr(2, 4)}`,
       accountId: targetAccountId,
       date: paymentDate,
-      description: `[Pago] ${pmt.description}`,
-      amount: -Math.abs(paidAmount || pmt.expectedAmount),
+      description: `${descPrefix} ${pmt.description}`,
+      amount: transactionAmount,
       category: pmt.category,
-      type: 'Boleto',
+      type: defaultTxType,
       status: 'Concluído',
+    };
+
+    const updatedPmt: FuturePayment = {
+      ...pmt,
+      status: 'Pago',
+      paidDate: paymentDate,
+      paidAmount: finalVal,
+      bankAccountId: targetAccountId,
     };
 
     if (user) {
       saveBankTransactionDoc(user.uid, newBankTx);
-      deleteFuturePaymentDoc(user.uid, paymentId);
-    } else {
-      setBankTransactions((prev) => [newBankTx, ...prev]);
-      setFuturePayments((prev) => prev.filter((p) => p.id !== paymentId));
+      saveFuturePaymentDoc(user.uid, updatedPmt);
     }
+    setBankTransactions((prev) => [newBankTx, ...prev]);
+    setFuturePayments((prev) => prev.map((p) => (p.id === paymentId ? updatedPmt : p)));
   };
 
   // Batch Import from Smart Reader
@@ -770,6 +782,7 @@ export default function App() {
           <BankAccountsView
             accounts={accounts}
             bankTransactions={bankTransactions}
+            categories={categories}
             cards={cards}
             onAddAccount={handleAddAccount}
             onEditAccount={handleEditAccount}
@@ -785,6 +798,7 @@ export default function App() {
           <CreditCardsView
             cards={cards}
             cardTransactions={cardTransactions}
+            categories={categories}
             onAddCard={handleAddCard}
             onEditCard={handleEditCard}
             onDeleteCard={handleDeleteCard}
@@ -813,6 +827,7 @@ export default function App() {
           <FuturePaymentsView
             futurePayments={futurePayments}
             accounts={accounts}
+            categories={categories}
             onAddPayment={handleAddFuturePayment}
             onEditPayment={handleEditFuturePayment}
             onDeletePayment={handleDeleteFuturePayment}
@@ -839,6 +854,7 @@ export default function App() {
           <SmartReaderView
             accounts={accounts}
             cards={cards}
+            categories={categories}
             onBatchImportBankTransactions={handleBatchImportBankTransactions}
             onBatchImportCardTransactions={handleBatchImportCardTransactions}
           />
@@ -869,6 +885,7 @@ export default function App() {
         bankAccount={auditModal.bankAccount}
         creditCard={auditModal.creditCard}
         investment={auditModal.investment}
+        categories={categories}
         bankTransactions={bankTransactions}
         cardTransactions={cardTransactions}
         investmentTransactions={investmentTransactions}

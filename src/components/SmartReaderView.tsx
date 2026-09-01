@@ -1,10 +1,12 @@
 import React, { useState, useEffect, useRef } from 'react';
 import {
   BankAccount,
+  CategoryItem,
   CreditCard,
   ParsedStatementItem,
   TransactionCategory,
 } from '../types';
+import { INITIAL_CATEGORIES } from '../data/initialData';
 import {
   formatCurrency,
   formatDateBR,
@@ -29,6 +31,7 @@ import {
 interface SmartReaderViewProps {
   accounts: BankAccount[];
   cards: CreditCard[];
+  categories?: CategoryItem[];
   onBatchImportBankTransactions: (accountId: string, items: ParsedStatementItem[]) => void;
   onBatchImportCardTransactions: (cardId: string, items: ParsedStatementItem[]) => void;
 }
@@ -36,9 +39,11 @@ interface SmartReaderViewProps {
 export const SmartReaderView: React.FC<SmartReaderViewProps> = ({
   accounts,
   cards,
+  categories = INITIAL_CATEGORIES,
   onBatchImportBankTransactions,
   onBatchImportCardTransactions,
 }) => {
+  const activeCategories = categories && categories.length > 0 ? categories : INITIAL_CATEGORIES;
   const [inputMode, setInputMode] = useState<'upload' | 'text'>('upload');
   const [rawText, setRawText] = useState('');
   const [targetType, setTargetType] = useState<'bank' | 'card'>('bank');
@@ -592,18 +597,17 @@ export const SmartReaderView: React.FC<SmartReaderViewProps> = ({
                         <td className="py-2.5 px-2">
                           <select
                             value={item.category}
-                            onChange={(e) => handleUpdateCategory(item.id, e.target.value as any)}
-                            className="p-1 text-xs bg-slate-100 dark:bg-slate-800 border rounded text-slate-800 dark:text-slate-200"
+                            onChange={(e) => handleUpdateCategory(item.id, e.target.value)}
+                            className="p-1 text-xs bg-slate-100 dark:bg-slate-800 border rounded text-slate-800 dark:text-slate-200 font-medium"
                           >
-                            <option value="Alimentação">Alimentação</option>
-                            <option value="Transporte">Transporte</option>
-                            <option value="Moradia">Moradia</option>
-                            <option value="Saúde">Saúde</option>
-                            <option value="Lazer">Lazer</option>
-                            <option value="Salário">Salário</option>
-                            <option value="Investimentos">Investimentos</option>
-                            <option value="Tarifa/Imposto">Tarifa/Imposto</option>
-                            <option value="Outros">Outros</option>
+                            {activeCategories.map((cat) => (
+                              <option key={cat.id} value={cat.name}>
+                                {cat.name}
+                              </option>
+                            ))}
+                            {item.category && !activeCategories.some((c) => c.name === item.category) && (
+                              <option value={item.category}>{item.category}</option>
+                            )}
                           </select>
                         </td>
                         <td className={`py-2.5 px-2 text-right font-bold whitespace-nowrap ${item.amount >= 0 && !item.isExpense ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-500 font-bold'}`}>
