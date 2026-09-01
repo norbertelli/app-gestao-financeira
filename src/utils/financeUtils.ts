@@ -422,3 +422,136 @@ export function autoDetectType(description: string): TransactionType {
   if (d.includes('rendimento')) return 'Rendimento';
   return 'Outros';
 }
+
+/**
+ * Calculate the first invoice month (YYYY-MM) for a purchase based on card closing day.
+ * If purchase day >= closingDay, the current month invoice is closed and the first installment
+ * will be in the next month's invoice.
+ * If purchase day < closingDay, the purchase enters the current month's invoice.
+ */
+export function calculateFirstInvoiceMonth(purchaseDate: string, closingDay: number): string {
+  if (!purchaseDate) return getCurrentYearMonth();
+  const parts = purchaseDate.split('-').map(Number);
+  const year = parts[0] || new Date().getFullYear();
+  const month = parts[1] || new Date().getMonth() + 1;
+  const day = parts[2] || 1;
+
+  // If purchase is made on or after the closing day (melhor dia), it enters the next month's invoice
+  if (day >= (closingDay || 5)) {
+    const nextDate = new Date(year, month, 1); // month is 1-indexed in date arithmetic here
+    const nextYear = nextDate.getFullYear();
+    const nextMonth = String(nextDate.getMonth() + 1).padStart(2, '0');
+    return `${nextYear}-${nextMonth}`;
+  } else {
+    return `${year}-${String(month).padStart(2, '0')}`;
+  }
+}
+
+/**
+ * Get the next invoice month tag (YYYY-MM) relative to a given invoice month or current month.
+ */
+export function getNextInvoiceMonth(monthStr?: string): string {
+  const base = monthStr || getCurrentYearMonth();
+  const [year, month] = base.split('-').map(Number);
+  const nextDate = new Date(year, month, 1);
+  return `${nextDate.getFullYear()}-${String(nextDate.getMonth() + 1).padStart(2, '0')}`;
+}
+
+/**
+ * Get the previous invoice month tag (YYYY-MM) relative to a given invoice month or current month.
+ */
+export function getPreviousInvoiceMonth(monthStr?: string): string {
+  const base = monthStr || getCurrentYearMonth();
+  const [year, month] = base.split('-').map(Number);
+  const prevDate = new Date(year, month - 2, 1);
+  return `${prevDate.getFullYear()}-${String(prevDate.getMonth() + 1).padStart(2, '0')}`;
+}
+
+/**
+ * Calculate the projected calendar date (YYYY-MM-DD) for an installment in a specific invoice month.
+ * Uses the day of the purchase (or card due day), safely clamped to the number of days in that month.
+ */
+export function calculateInstallmentDate(invoiceMonth: string, preferredDay: number): string {
+  if (!invoiceMonth) return new Date().toISOString().split('T')[0];
+  const [yearNum, monthNum] = invoiceMonth.split('-').map(Number);
+  // Get max days in target month (day 0 of monthNum gives last day of monthNum - 1, so monthNum is next month)
+  const maxDays = new Date(yearNum, monthNum, 0).getDate();
+  const clampedDay = Math.min(Math.max(1, preferredDay || 1), maxDays);
+  return `${yearNum}-${String(monthNum).padStart(2, '0')}-${String(clampedDay).padStart(2, '0')}`;
+}
+
+/**
+ * Generate a complete schedule of future installments for a credit card purchase.
+ */
+export function generateInstallmentsSchedule(options: {
+  card: CreditCard;
+  description: string;
+  totalAmount: number;
+  totalInstallments: number;
+  purchaseDate: string;
+  firstInvoiceMonth?: string;
+  category: TransactionCategory;
+}): Omit<CardTransaction, 'id'>[] {
+  const {
+    card,
+    description,
+    totalAmount,
+    totalInstallments,
+    purchaseDate,
+    firstInvoiceMonth,
+    category,
+  } = options;
+
+  const numParc = Math.max(1, totalInstallments || 1);
+  const totalVal = Math.abs(totalAmount) || 0;
+  const baseInstallmentAmount = Math.floor((totalVal / numParc) * 100) / 100;
+  const remainder = Math.round((totalVal - baseInstallmentAmount * numParc) * 100) / 100;
+
+  const initialInvoiceMonth =
+    firstInvoiceMonth || calculateFirstInvoiceMonth(purchaseDate, card.closingDay);
+  const [startYear, startMonth] = initialInvoiceMonth.split('-').map(Number);
+  const purchaseParts = purchaseDate.split('-').map(Number);
+  const purchaseDay = purchaseParts[2] || 1;
+
+  const currentMonth = getCurrentYearMonth();
+  const purchaseGroupId = `group_${Date.now()}_${Math.random().toString(36).substr(2, 6)}`;
+  const schedule: Omit<CardTransaction, 'id'>[] = [];
+
+  for (let i = 0; i < numParc; i++) {
+    // Add i months to starting invoice month
+    const targetDate = new Date(startYear, startMonth - 1 + i, 1);
+    const invoiceMonthTag = `${targetDate.getFullYear()}-${String(targetDate.getMonth() + 1).padStart(2, '0')}`;
+    
+    // Calculate installment date for that month
+    const installmentDate = calculateInstallmentDate(invoiceMonthTag, purchaseDay);
+
+    // Give remainder cents to 1st installment so sum strictly matches totalVal
+    const installmentAmount = i === 0 ? baseInstallmentAmount + remainder : baseInstallmentAmount;
+
+    let status: 'Faturado' | 'Aberto' | 'Futuro' = 'Futuro';
+    if (invoiceMonthTag < currentMonth) {
+      status = 'Faturado';
+    } else if (invoiceMonthTag === currentMonth) {
+      status = 'Aberto';
+    } else {
+      status = 'Futuro';
+    }
+
+    schedule.push({
+      cardId: card.id,
+      date: installmentDate, // Future projected date for this installment
+      purchaseDate: purchaseDate, // Original purchase date preserved
+      description: description.trim(),
+      amount: Math.round(installmentAmount * 100) / 100,
+      category,
+      currentInstallment: i + 1,
+      totalInstallments: numParc,
+      invoiceMonth: invoiceMonthTag,
+      status,
+      purchaseGroupId,
+    });
+  }
+
+  return schedule;
+}
+

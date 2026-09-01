@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { CreditCard, CardTransaction, TransactionCategory, CategoryItem } from '../types';
 import { INITIAL_CATEGORIES } from '../data/initialData';
 import {
@@ -10,11 +10,15 @@ import {
   calculateCardAvailableLimit,
   calculateCardUsedLimitPercent,
   getCurrentYearMonth,
+  calculateFirstInvoiceMonth,
+  getNextInvoiceMonth,
+  generateInstallmentsSchedule,
 } from '../utils/financeUtils';
 import {
   CreditCard as CardIcon,
   Plus,
   Calendar,
+  Check,
   Trash2,
   Edit3,
   ExternalLink,
@@ -27,6 +31,8 @@ import {
   TrendingDown,
   ChevronRight,
   Sparkles,
+  CheckCircle2,
+  Info,
 } from 'lucide-react';
 
 interface CreditCardsViewProps {
@@ -71,6 +77,20 @@ const AddCardModal: React.FC<AddCardModalProps> = ({ isOpen, onClose, onAdd }) =
   const [lastFourDigits, setLastFourDigits] = useState('1234');
   const [color, setColor] = useState('#820AD1');
 
+  // Reset form when modal opens
+  useEffect(() => {
+    if (isOpen) {
+      setName('');
+      setBankName('Itaú Unibanco');
+      setTotalLimit('10000');
+      setClosingDay('3');
+      setDueDay('10');
+      setBrand('mastercard');
+      setLastFourDigits('1234');
+      setColor('#820AD1');
+    }
+  }, [isOpen]);
+
   if (!isOpen) return null;
 
   const handleSelectPreset = (presetName: string) => {
@@ -81,6 +101,11 @@ const AddCardModal: React.FC<AddCardModalProps> = ({ isOpen, onClose, onAdd }) =
       setBrand(preset.brand as any);
       setColor(preset.color);
     }
+  };
+
+  const handleClose = () => {
+    setName('');
+    onClose();
   };
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -96,6 +121,7 @@ const AddCardModal: React.FC<AddCardModalProps> = ({ isOpen, onClose, onAdd }) =
       lastFourDigits: lastFourDigits.trim() || '0000',
       color: color || '#820AD1',
     });
+    setName('');
     onClose();
   };
 
@@ -484,91 +510,179 @@ const InstallmentModal: React.FC<InstallmentModalProps> = ({
   const [category, setCategory] = useState<TransactionCategory>(() => categories[0]?.name || 'Outros');
   const [startDate, setStartDate] = useState(new Date().toISOString().split('T')[0]);
 
-  if (!isOpen) return null;
+  // Selected card object
+  const selectedCard = cards.find((c) => c.id === cardId) || cards[0];
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!desc.trim() || !cardId) return;
+  // Auto calculate first invoice month based on purchase date and card closing day
+  const currentMonthStr = getCurrentYearMonth();
+  const nextMonthStr = getNextInvoiceMonth(currentMonthStr);
+  const autoCalculatedMonth = calculateFirstInvoiceMonth(
+    startDate,
+    selectedCard?.closingDay || 5
+  );
 
+  const [firstInvoiceMonth, setFirstInvoiceMonth] = useState<string>(() => currentMonthStr);
+
+  // Reset all fields whenever modal opens to prevent dirty persistence between launches
+  useEffect(() => {
+    if (isOpen) {
+      const activeCardId = selectedCardId || cards[0]?.id || '';
+      setCardId(activeCardId);
+      setDesc('');
+      setTotalValue('');
+      setNumParcelas('10');
+      setCategory(categories[0]?.name || 'Outros');
+      const today = new Date().toISOString().split('T')[0];
+      setStartDate(today);
+      const activeCard = cards.find((c) => c.id === activeCardId) || cards[0];
+      const autoM = calculateFirstInvoiceMonth(today, activeCard?.closingDay || 5);
+      setFirstInvoiceMonth(autoM);
+    }
+  }, [isOpen, selectedCardId]);
+
+  // Recalculate default firstInvoiceMonth when startDate or selectedCard changes
+  useEffect(() => {
+    if (startDate && selectedCard) {
+      const autoMonth = calculateFirstInvoiceMonth(startDate, selectedCard.closingDay || 5);
+      setFirstInvoiceMonth(autoMonth);
+    }
+  }, [startDate, selectedCard?.closingDay]);
+
+  // Generate live preview of installments schedule
+  const previewSchedule = useMemo(() => {
+    if (!selectedCard || !startDate) return [];
     const totalVal = parseFloat(totalValue) || 0;
     const numParc = parseInt(numParcelas, 10) || 1;
-    const parcAmount = totalVal / numParc;
+    if (totalVal <= 0) return [];
 
-    const [startYear, startMonthNum] = startDate.split('-').map(Number);
-    const purchaseGroupId = `group_${Date.now()}_${Math.random().toString(36).substr(2, 4)}`;
+    return generateInstallmentsSchedule({
+      card: selectedCard,
+      description: desc || 'Nova Compra',
+      totalAmount: totalVal,
+      totalInstallments: numParc,
+      purchaseDate: startDate,
+      firstInvoiceMonth,
+      category,
+    });
+  }, [selectedCard, desc, totalValue, numParcelas, startDate, firstInvoiceMonth, category]);
 
-    for (let i = 0; i < numParc; i++) {
-      const futureDate = new Date(startYear, startMonthNum - 1 + i, 1);
-      const invoiceMonthTag = `${futureDate.getFullYear()}-${String(futureDate.getMonth() + 1).padStart(2, '0')}`;
+  if (!isOpen) return null;
 
-      onAddTransaction({
-        cardId,
-        date: startDate,
-        description: desc.trim(),
-        amount: Math.round(parcAmount * 100) / 100,
-        category,
-        currentInstallment: i + 1,
-        totalInstallments: numParc,
-        invoiceMonth: invoiceMonthTag,
-        status: i === 0 ? 'Aberto' : 'Futuro',
-        purchaseGroupId,
-      });
-    }
-
+  const handleClose = () => {
+    setDesc('');
+    setTotalValue('');
     onClose();
   };
 
+  const handleClearForm = () => {
+    setDesc('');
+    setTotalValue('');
+    setNumParcelas('10');
+    setCategory(categories[0]?.name || 'Outros');
+    const today = new Date().toISOString().split('T')[0];
+    setStartDate(today);
+    setFirstInvoiceMonth(calculateFirstInvoiceMonth(today, selectedCard?.closingDay || 5));
+  };
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!desc.trim() || !selectedCard) return;
+
+    const totalVal = parseFloat(totalValue) || 0;
+    const numParc = parseInt(numParcelas, 10) || 1;
+    if (totalVal <= 0) return;
+
+    const schedule = generateInstallmentsSchedule({
+      card: selectedCard,
+      description: desc.trim(),
+      totalAmount: totalVal,
+      totalInstallments: numParc,
+      purchaseDate: startDate,
+      firstInvoiceMonth,
+      category,
+    });
+
+    schedule.forEach((tx) => {
+      onAddTransaction(tx);
+    });
+
+    setDesc('');
+    setTotalValue('');
+    onClose();
+  };
+
+  const purchaseDay = startDate ? parseInt(startDate.split('-')[2], 10) : 1;
+  const isPostClosing = purchaseDay >= (selectedCard?.closingDay || 5);
+
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4">
-      <div className="bg-white dark:bg-slate-900 rounded-2xl p-6 max-w-md w-full border border-slate-200 dark:border-slate-800 shadow-2xl space-y-4 animate-in fade-in zoom-in-95 duration-150">
-        <div>
-          <h3 className="text-xl font-bold text-slate-900 dark:text-slate-100 flex items-center gap-2">
-            <Layers className="w-5 h-5 text-purple-600 dark:text-purple-400" />
-            <span>Lançar Compra Parcelada</span>
-          </h3>
-          <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-            Gera automaticamente as parcelas projetadas para os próximos meses.
-          </p>
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4 overflow-y-auto">
+      <div className="bg-white dark:bg-slate-900 rounded-2xl p-6 max-w-xl w-full border border-slate-200 dark:border-slate-800 shadow-2xl space-y-4 my-8 animate-in fade-in zoom-in-95 duration-150">
+        <div className="flex items-start justify-between">
+          <div>
+            <h3 className="text-xl font-bold text-slate-900 dark:text-slate-100 flex items-center gap-2">
+              <Layers className="w-5 h-5 text-purple-600 dark:text-purple-400" />
+              <span>Lançar Compra / Parcelas Futuras</span>
+            </h3>
+            <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+              Gera automaticamente o cronograma de parcelas futuras com as datas e faturas corretas para cada mês.
+            </p>
+          </div>
+          <button
+            onClick={handleClose}
+            className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 text-sm font-bold"
+          >
+            ✕
+          </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-3">
+        <form onSubmit={handleSubmit} className="space-y-3.5">
+          {/* Card Selection */}
           <div>
-            <label className="text-xs font-semibold text-slate-700 dark:text-slate-300">Cartão de Crédito</label>
+            <label className="text-xs font-semibold text-slate-700 dark:text-slate-300 flex items-center justify-between">
+              <span>Cartão de Crédito</span>
+              {selectedCard && (
+                <span className="text-[11px] font-normal text-purple-600 dark:text-purple-400">
+                  Fechamento dia {selectedCard.closingDay} • Vencimento dia {selectedCard.dueDay}
+                </span>
+              )}
+            </label>
             <select
               value={cardId}
               onChange={(e) => setCardId(e.target.value)}
-              className="w-full p-2 border border-slate-200 dark:border-slate-700 rounded-xl mt-1 bg-slate-50 dark:bg-slate-800 text-sm font-medium text-slate-800 dark:text-slate-200"
+              className="w-full p-2.5 border border-slate-200 dark:border-slate-700 rounded-xl mt-1 bg-slate-50 dark:bg-slate-800 text-sm font-medium text-slate-800 dark:text-slate-200"
             >
               {cards.map((c) => (
                 <option key={c.id} value={c.id}>
-                  {c.name} (**** {c.lastFourDigits}) - Limite: {formatCurrency(c.totalLimit)}
+                  {c.name} (**** {c.lastFourDigits}) - Limite: {formatCurrency(c.totalLimit)} [Fecha dia {c.closingDay}]
                 </option>
               ))}
             </select>
           </div>
 
+          {/* Description */}
           <div>
-            <label className="text-xs font-semibold text-slate-700 dark:text-slate-300">Descrição do Estabelecimento</label>
+            <label className="text-xs font-semibold text-slate-700 dark:text-slate-300">Descrição do Estabelecimento / Compra</label>
             <input
               type="text"
-              placeholder="Ex: Notebook Dell ou Passagem CVC"
+              placeholder="Ex: Notebook Dell, Passagem Aérea, Seguro Auto"
               value={desc}
               onChange={(e) => setDesc(e.target.value)}
-              className="w-full p-2 border border-slate-200 dark:border-slate-700 rounded-xl mt-1 bg-slate-50 dark:bg-slate-800 text-sm font-medium text-slate-800 dark:text-slate-200"
+              className="w-full p-2.5 border border-slate-200 dark:border-slate-700 rounded-xl mt-1 bg-slate-50 dark:bg-slate-800 text-sm font-medium text-slate-800 dark:text-slate-200"
               required
             />
           </div>
 
-          <div className="grid grid-cols-2 gap-2">
+          {/* Value & Installments */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
-              <label className="text-xs font-semibold text-slate-700 dark:text-slate-300">Valor Total (R$)</label>
+              <label className="text-xs font-semibold text-slate-700 dark:text-slate-300">Valor Total da Compra (R$)</label>
               <input
                 type="number"
                 step="0.01"
                 placeholder="Ex: 1200.00"
                 value={totalValue}
                 onChange={(e) => setTotalValue(e.target.value)}
-                className="w-full p-2 border border-slate-200 dark:border-slate-700 rounded-xl mt-1 bg-slate-50 dark:bg-slate-800 text-sm font-black text-slate-900 dark:text-slate-100"
+                className="w-full p-2.5 border border-slate-200 dark:border-slate-700 rounded-xl mt-1 bg-slate-50 dark:bg-slate-800 text-sm font-black text-slate-900 dark:text-slate-100"
                 required
               />
             </div>
@@ -578,9 +692,10 @@ const InstallmentModal: React.FC<InstallmentModalProps> = ({
               <select
                 value={numParcelas}
                 onChange={(e) => setNumParcelas(e.target.value)}
-                className="w-full p-2 border border-slate-200 dark:border-slate-700 rounded-xl mt-1 bg-slate-50 dark:bg-slate-800 text-sm font-semibold"
+                className="w-full p-2.5 border border-slate-200 dark:border-slate-700 rounded-xl mt-1 bg-slate-50 dark:bg-slate-800 text-sm font-semibold"
               >
-                {[1, 2, 3, 4, 5, 6, 8, 10, 12, 18, 24].map((n) => (
+                <option value="1">1x À vista ({totalValue ? formatCurrency(parseFloat(totalValue) || 0) : 'R$ 0,00'})</option>
+                {[2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 15, 18, 24, 36, 48].map((n) => (
                   <option key={n} value={n}>
                     {n}x {totalValue ? `de ${formatCurrency((parseFloat(totalValue) || 0) / n)}` : ''}
                   </option>
@@ -589,13 +704,39 @@ const InstallmentModal: React.FC<InstallmentModalProps> = ({
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-2">
+          {/* Dates and Category */}
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <div>
+              <label className="text-xs font-semibold text-slate-700 dark:text-slate-300">Data da Compra</label>
+              <input
+                type="date"
+                value={startDate}
+                onChange={(e) => setStartDate(e.target.value)}
+                className="w-full p-2.5 border border-slate-200 dark:border-slate-700 rounded-xl mt-1 bg-slate-50 dark:bg-slate-800 text-sm font-medium"
+                required
+              />
+            </div>
+
+            <div>
+              <label className="text-xs font-semibold text-slate-700 dark:text-slate-300 flex items-center justify-between">
+                <span>1ª Fatura</span>
+                <span className="text-[10px] text-slate-400">YYYY-MM</span>
+              </label>
+              <input
+                type="month"
+                value={firstInvoiceMonth}
+                onChange={(e) => setFirstInvoiceMonth(e.target.value)}
+                className="w-full p-2.5 border border-purple-300 dark:border-purple-800 rounded-xl mt-1 bg-purple-50/50 dark:bg-purple-950/30 text-sm font-bold text-purple-700 dark:text-purple-300"
+                required
+              />
+            </div>
+
             <div>
               <label className="text-xs font-semibold text-slate-700 dark:text-slate-300">Categoria</label>
               <select
                 value={category}
                 onChange={(e) => setCategory(e.target.value)}
-                className="w-full p-2 border border-slate-200 dark:border-slate-700 rounded-xl mt-1 bg-slate-50 dark:bg-slate-800 text-sm"
+                className="w-full p-2.5 border border-slate-200 dark:border-slate-700 rounded-xl mt-1 bg-slate-50 dark:bg-slate-800 text-sm"
               >
                 {categories.map((cat) => (
                   <option key={cat.id} value={cat.name}>
@@ -604,33 +745,143 @@ const InstallmentModal: React.FC<InstallmentModalProps> = ({
                 ))}
               </select>
             </div>
-
-            <div>
-              <label className="text-xs font-semibold text-slate-700 dark:text-slate-300">Data da Compra</label>
-              <input
-                type="date"
-                value={startDate}
-                onChange={(e) => setStartDate(e.target.value)}
-                className="w-full p-2 border border-slate-200 dark:border-slate-700 rounded-xl mt-1 bg-slate-50 dark:bg-slate-800 text-sm"
-                required
-              />
-            </div>
           </div>
 
-          <div className="flex justify-end gap-2 pt-4 border-t border-slate-200 dark:border-slate-800">
+          {/* Quick 1-Click Fatura Presets: Mês Corrente / Próximo Mês / Auto */}
+          <div className="flex flex-wrap items-center gap-1.5 pt-1">
+            <span className="text-[11px] font-semibold text-slate-500 dark:text-slate-400 mr-1">
+              Atalhos de 1ª Fatura:
+            </span>
             <button
               type="button"
-              onClick={onClose}
-              className="px-4 py-2.5 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 rounded-xl text-xs font-semibold transition-colors"
+              onClick={() => setFirstInvoiceMonth(currentMonthStr)}
+              className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all flex items-center gap-1 ${
+                firstInvoiceMonth === currentMonthStr
+                  ? 'bg-purple-600 text-white shadow-xs'
+                  : 'bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700'
+              }`}
             >
-              Cancelar
+              <span>📅 Mês Corrente ({formatMonthBR(currentMonthStr)})</span>
+              {firstInvoiceMonth === currentMonthStr && <Check className="w-3 h-3" />}
             </button>
+
             <button
-              type="submit"
-              className="px-4 py-2.5 bg-purple-600 hover:bg-purple-700 text-white rounded-xl text-xs font-bold shadow-md shadow-purple-900/30 transition-all"
+              type="button"
+              onClick={() => setFirstInvoiceMonth(nextMonthStr)}
+              className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all flex items-center gap-1 ${
+                firstInvoiceMonth === nextMonthStr
+                  ? 'bg-purple-600 text-white shadow-xs'
+                  : 'bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700'
+              }`}
             >
-              Projetar Parcelas
+              <span>➡️ Próximo Mês ({formatMonthBR(nextMonthStr)})</span>
+              {firstInvoiceMonth === nextMonthStr && <Check className="w-3 h-3" />}
             </button>
+
+            {autoCalculatedMonth !== currentMonthStr && autoCalculatedMonth !== nextMonthStr && (
+              <button
+                type="button"
+                onClick={() => setFirstInvoiceMonth(autoCalculatedMonth)}
+                className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all flex items-center gap-1 ${
+                  firstInvoiceMonth === autoCalculatedMonth
+                    ? 'bg-purple-600 text-white shadow-xs'
+                    : 'bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700'
+                }`}
+              >
+                <span>⚡ Auto Fechamento ({formatMonthBR(autoCalculatedMonth)})</span>
+                {firstInvoiceMonth === autoCalculatedMonth && <Check className="w-3 h-3" />}
+              </button>
+            )}
+          </div>
+
+          {/* Informational badge about closing date */}
+          <div className="p-2.5 bg-slate-100 dark:bg-slate-800/60 rounded-xl text-xs text-slate-600 dark:text-slate-300 flex items-center gap-2">
+            <Info className="w-4 h-4 text-purple-600 dark:text-purple-400 flex-shrink-0" />
+            <span>
+              {isPostClosing ? (
+                <>Compra feita no dia {purchaseDay} (após fechamento dia {selectedCard?.closingDay}): 1ª parcela calculada para a fatura de <strong>{formatMonthBR(firstInvoiceMonth)}</strong>.</>
+              ) : (
+                <>Compra feita no dia {purchaseDay} (antes do fechamento dia {selectedCard?.closingDay}): 1ª parcela calculada para a fatura de <strong>{formatMonthBR(firstInvoiceMonth)}</strong>.</>
+              )}
+            </span>
+          </div>
+
+          {/* LIVE PREVIEW OF FUTURE INSTALLMENTS */}
+          {previewSchedule.length > 0 && (
+            <div className="border border-purple-200 dark:border-purple-900/50 bg-purple-50/30 dark:bg-purple-950/20 rounded-xl p-3 space-y-2">
+              <div className="flex items-center justify-between text-xs font-bold text-purple-900 dark:text-purple-200">
+                <span className="flex items-center gap-1.5">
+                  <CheckCircle2 className="w-3.5 h-3.5 text-purple-600 dark:text-purple-400" />
+                  <span>Cronograma Projetado ({previewSchedule.length} parcelas)</span>
+                </span>
+                <span>Total: {formatCurrency(parseFloat(totalValue) || 0)}</span>
+              </div>
+
+              <div className="max-h-36 overflow-y-auto space-y-1 pr-1 text-xs">
+                {previewSchedule.map((item, idx) => (
+                  <div
+                    key={idx}
+                    className="flex items-center justify-between bg-white dark:bg-slate-800/80 p-2 rounded-lg border border-slate-100 dark:border-slate-700/60"
+                  >
+                    <div className="flex items-center gap-2">
+                      <span className="px-1.5 py-0.5 rounded text-[11px] font-extrabold bg-purple-100 text-purple-800 dark:bg-purple-950 dark:text-purple-300">
+                        {item.currentInstallment}/{item.totalInstallments}
+                      </span>
+                      <span className="font-semibold text-slate-800 dark:text-slate-200">
+                        {formatMonthBR(item.invoiceMonth)}
+                      </span>
+                      <span className="text-[11px] text-slate-500 dark:text-slate-400">
+                        (Data: {formatDateBR(item.date)})
+                      </span>
+                    </div>
+
+                    <div className="flex items-center gap-2 font-bold">
+                      <span className="text-red-600 dark:text-red-400">
+                        {formatCurrency(item.amount)}
+                      </span>
+                      <span
+                        className={`text-[10px] px-1.5 py-0.5 rounded font-medium ${
+                          item.status === 'Aberto'
+                            ? 'bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300'
+                            : item.status === 'Futuro'
+                            ? 'bg-blue-100 text-blue-800 dark:bg-blue-950 dark:text-blue-300'
+                            : 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300'
+                        }`}
+                      >
+                        {item.status}
+                      </span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          <div className="flex items-center justify-between gap-2 pt-3 border-t border-slate-200 dark:border-slate-800">
+            <button
+              type="button"
+              onClick={handleClearForm}
+              className="px-3 py-2 text-slate-500 hover:text-slate-700 dark:hover:text-slate-300 text-xs font-semibold hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors"
+            >
+              Limpar Campos
+            </button>
+
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={handleClose}
+                className="px-4 py-2.5 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 rounded-xl text-xs font-semibold transition-colors"
+              >
+                Cancelar
+              </button>
+              <button
+                type="submit"
+                className="px-5 py-2.5 bg-purple-600 hover:bg-purple-700 text-white rounded-xl text-xs font-bold shadow-md shadow-purple-900/30 transition-all flex items-center gap-1.5"
+              >
+                <Plus className="w-4 h-4" />
+                <span>Gerar e Salvar Parcelas</span>
+              </button>
+            </div>
           </div>
         </form>
       </div>
@@ -653,13 +904,19 @@ const EditCardTxModal: React.FC<EditCardTxModalProps> = ({ tx, categories = INIT
   const [amount, setAmount] = useState(tx.amount.toString());
   const [category, setCategory] = useState<TransactionCategory>(tx.category);
   const [date, setDate] = useState(tx.date);
+  const [purchaseDate, setPurchaseDate] = useState(tx.purchaseDate || tx.date);
+  const [invoiceMonth, setInvoiceMonth] = useState(tx.invoiceMonth);
+  const [status, setStatus] = useState<'Faturado' | 'Aberto' | 'Futuro'>(tx.status || 'Aberto');
 
-  React.useEffect(() => {
+  useEffect(() => {
     if (tx) {
       setDesc(tx.description);
       setAmount(tx.amount.toString());
       setCategory(tx.category);
       setDate(tx.date);
+      setPurchaseDate(tx.purchaseDate || tx.date);
+      setInvoiceMonth(tx.invoiceMonth);
+      setStatus(tx.status || 'Aberto');
     }
   }, [tx]);
 
@@ -673,6 +930,9 @@ const EditCardTxModal: React.FC<EditCardTxModalProps> = ({ tx, categories = INIT
       amount: parseFloat(amount) || 0,
       category,
       date,
+      purchaseDate,
+      invoiceMonth,
+      status,
     });
     onClose();
   };
@@ -686,29 +946,18 @@ const EditCardTxModal: React.FC<EditCardTxModalProps> = ({ tx, categories = INIT
             <span>Alterar Lançamento do Cartão</span>
           </h3>
           <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-            Parcela {tx.currentInstallment}/{tx.totalInstallments} referente ao mês {formatMonthBR(tx.invoiceMonth)}
+            Parcela {tx.currentInstallment}/{tx.totalInstallments} • Fatura: {formatMonthBR(tx.invoiceMonth)}
           </p>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-3">
-          <div>
-            <label className="text-xs font-semibold text-slate-700 dark:text-slate-300">Data da Compra</label>
-            <input
-              type="date"
-              value={date}
-              onChange={(e) => setDate(e.target.value)}
-              className="w-full p-2 border border-slate-200 dark:border-slate-700 rounded-xl mt-1 bg-slate-50 dark:bg-slate-800 text-sm font-medium text-slate-800 dark:text-slate-200"
-              required
-            />
-          </div>
-
           <div>
             <label className="text-xs font-semibold text-slate-700 dark:text-slate-300">Descrição</label>
             <input
               type="text"
               value={desc}
               onChange={(e) => setDesc(e.target.value)}
-              className="w-full p-2 border border-slate-200 dark:border-slate-700 rounded-xl mt-1 bg-slate-50 dark:bg-slate-800 text-sm font-medium text-slate-800 dark:text-slate-200"
+              className="w-full p-2.5 border border-slate-200 dark:border-slate-700 rounded-xl mt-1 bg-slate-50 dark:bg-slate-800 text-sm font-medium text-slate-800 dark:text-slate-200"
               required
             />
           </div>
@@ -721,7 +970,7 @@ const EditCardTxModal: React.FC<EditCardTxModalProps> = ({ tx, categories = INIT
                 step="0.01"
                 value={amount}
                 onChange={(e) => setAmount(e.target.value)}
-                className="w-full p-2 border border-slate-200 dark:border-slate-700 rounded-xl mt-1 bg-slate-50 dark:bg-slate-800 text-sm font-black text-red-600 dark:text-red-400"
+                className="w-full p-2.5 border border-slate-200 dark:border-slate-700 rounded-xl mt-1 bg-slate-50 dark:bg-slate-800 text-sm font-black text-red-600 dark:text-red-400"
                 required
               />
             </div>
@@ -731,7 +980,7 @@ const EditCardTxModal: React.FC<EditCardTxModalProps> = ({ tx, categories = INIT
               <select
                 value={category}
                 onChange={(e) => setCategory(e.target.value)}
-                className="w-full p-2 border border-slate-200 dark:border-slate-700 rounded-xl mt-1 bg-slate-50 dark:bg-slate-800 text-sm font-semibold"
+                className="w-full p-2.5 border border-slate-200 dark:border-slate-700 rounded-xl mt-1 bg-slate-50 dark:bg-slate-800 text-sm font-semibold"
               >
                 {categories.map((cat) => (
                   <option key={cat.id} value={cat.name}>
@@ -741,6 +990,55 @@ const EditCardTxModal: React.FC<EditCardTxModalProps> = ({ tx, categories = INIT
                 {!categories.some((c) => c.name === category) && (
                   <option value={category}>{category}</option>
                 )}
+              </select>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-2">
+            <div>
+              <label className="text-xs font-semibold text-slate-700 dark:text-slate-300">Data da Parcela (No Mês)</label>
+              <input
+                type="date"
+                value={date}
+                onChange={(e) => setDate(e.target.value)}
+                className="w-full p-2 border border-slate-200 dark:border-slate-700 rounded-xl mt-1 bg-slate-50 dark:bg-slate-800 text-sm font-medium text-slate-800 dark:text-slate-200"
+                required
+              />
+            </div>
+
+            <div>
+              <label className="text-xs font-semibold text-slate-700 dark:text-slate-300">Data Original da Compra</label>
+              <input
+                type="date"
+                value={purchaseDate}
+                onChange={(e) => setPurchaseDate(e.target.value)}
+                className="w-full p-2 border border-slate-200 dark:border-slate-700 rounded-xl mt-1 bg-slate-50 dark:bg-slate-800 text-sm font-medium text-slate-800 dark:text-slate-200"
+              />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-2">
+            <div>
+              <label className="text-xs font-semibold text-slate-700 dark:text-slate-300">Mês da Fatura (YYYY-MM)</label>
+              <input
+                type="month"
+                value={invoiceMonth}
+                onChange={(e) => setInvoiceMonth(e.target.value)}
+                className="w-full p-2 border border-slate-200 dark:border-slate-700 rounded-xl mt-1 bg-slate-50 dark:bg-slate-800 text-sm font-semibold"
+                required
+              />
+            </div>
+
+            <div>
+              <label className="text-xs font-semibold text-slate-700 dark:text-slate-300">Status</label>
+              <select
+                value={status}
+                onChange={(e) => setStatus(e.target.value as any)}
+                className="w-full p-2 border border-slate-200 dark:border-slate-700 rounded-xl mt-1 bg-slate-50 dark:bg-slate-800 text-sm font-semibold"
+              >
+                <option value="Aberto">Aberto (Fatura Atual)</option>
+                <option value="Futuro">Futuro (Projetada)</option>
+                <option value="Faturado">Faturado / Pago</option>
               </select>
             </div>
           </div>
@@ -782,6 +1080,8 @@ export const CreditCardsView: React.FC<CreditCardsViewProps> = ({
   const currentMonth = getCurrentYearMonth();
   const [selectedCardId, setSelectedCardId] = useState<string>(cards[0]?.id || '');
   const [selectedMonth, setSelectedMonth] = useState<string>(currentMonth);
+  const [viewMode, setViewMode] = useState<'month' | 'all'>('month');
+  const [statusFilter, setStatusFilter] = useState<'ALL' | 'CURRENT' | 'FUTURE' | 'BILLED'>('ALL');
 
   // Modal triggers
   const [showAddCardModal, setShowAddCardModal] = useState(false);
@@ -1151,13 +1451,18 @@ export const CreditCardsView: React.FC<CreditCardsViewProps> = ({
       {selectedCard && (
         <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-2xs overflow-hidden">
           <div className="p-6 border-b border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/30">
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
               <div>
-                <h2 className="text-xl font-extrabold text-slate-900 dark:text-slate-100 flex items-center gap-2">
-                  <Clock className="w-5 h-5 text-purple-600 dark:text-purple-400" />
-                  <span>Fatura Projetada: {selectedCard.name}</span>
-                </h2>
-                <div className="flex flex-wrap items-center gap-3 mt-1 text-xs text-slate-500 dark:text-slate-400">
+                <div className="flex items-center gap-2">
+                  <h2 className="text-xl font-extrabold text-slate-900 dark:text-slate-100 flex items-center gap-2">
+                    <Clock className="w-5 h-5 text-purple-600 dark:text-purple-400" />
+                    <span>Fatura Projetada: {selectedCard.name}</span>
+                  </h2>
+                  <span className="px-2.5 py-0.5 rounded-full text-xs font-extrabold bg-purple-100 text-purple-800 dark:bg-purple-950 dark:text-purple-300">
+                    **** {selectedCard.lastFourDigits}
+                  </span>
+                </div>
+                <div className="flex flex-wrap items-center gap-3 mt-1.5 text-xs text-slate-500 dark:text-slate-400">
                   <span>Limite: <strong className="text-slate-800 dark:text-slate-200">{formatCurrency(selectedCard.totalLimit)}</strong></span>
                   <span>•</span>
                   <span>Disponível: <strong className="text-emerald-600 dark:text-emerald-400">{formatCurrency(calculateCardAvailableLimit(selectedCard, cardTransactions))}</strong></span>
@@ -1166,8 +1471,57 @@ export const CreditCardsView: React.FC<CreditCardsViewProps> = ({
                 </div>
               </div>
 
-              {/* Month Selector Carousel / Tabs */}
-              <div className="flex items-center gap-1.5 overflow-x-auto max-w-full pb-1">
+              {/* Action and Navigation Controls */}
+              <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2">
+                {/* View Mode Toggle */}
+                <div className="flex items-center bg-slate-200/80 dark:bg-slate-800 p-1 rounded-xl text-xs font-bold">
+                  <button
+                    type="button"
+                    onClick={() => setViewMode('month')}
+                    className={`px-3 py-1.5 rounded-lg transition-all ${
+                      viewMode === 'month'
+                        ? 'bg-white dark:bg-slate-900 text-purple-700 dark:text-purple-300 shadow-xs'
+                        : 'text-slate-600 dark:text-slate-400 hover:text-slate-900'
+                    }`}
+                  >
+                    Por Fatura Mensal
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setViewMode('all')}
+                    className={`px-3 py-1.5 rounded-lg transition-all ${
+                      viewMode === 'all'
+                        ? 'bg-white dark:bg-slate-900 text-purple-700 dark:text-purple-300 shadow-xs'
+                        : 'text-slate-600 dark:text-slate-400 hover:text-slate-900'
+                    }`}
+                  >
+                    Todas as Parcelas
+                  </button>
+                </div>
+
+                {/* Quick Jump to Mês Corrente */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSelectedMonth(currentMonth);
+                    setViewMode('month');
+                  }}
+                  className={`px-3 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 border shadow-xs ${
+                    selectedMonth === currentMonth && viewMode === 'month'
+                      ? 'bg-amber-500 text-slate-950 border-amber-400 font-black'
+                      : 'bg-white dark:bg-slate-800 hover:bg-amber-50 dark:hover:bg-amber-950/30 text-amber-700 dark:text-amber-300 border-amber-200 dark:border-amber-900/60'
+                  }`}
+                  title="Exibir imediatamente a fatura do mês atual"
+                >
+                  <Calendar className="w-3.5 h-3.5" />
+                  <span>Mês Corrente ({formatMonthBR(currentMonth)})</span>
+                </button>
+              </div>
+            </div>
+
+            {/* Month Selector Carousel (Shown when in monthly view) */}
+            {viewMode === 'month' && (
+              <div className="mt-4 pt-3 border-t border-slate-200/80 dark:border-slate-800/80 flex items-center gap-1.5 overflow-x-auto max-w-full pb-1">
                 {availableMonths.map((m) => {
                   const isSelectedM = m === selectedMonth;
                   const isCurrent = m === currentMonth;
@@ -1177,102 +1531,223 @@ export const CreditCardsView: React.FC<CreditCardsViewProps> = ({
                     <button
                       key={m}
                       onClick={() => setSelectedMonth(m)}
-                      className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all whitespace-nowrap flex flex-col items-center ${
+                      className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all whitespace-nowrap flex flex-col items-center flex-shrink-0 ${
                         isSelectedM
                           ? 'bg-purple-600 text-white shadow-md'
                           : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700 hover:bg-purple-50 dark:hover:bg-purple-950/30'
                       }`}
                     >
                       <span className="flex items-center gap-1">
-                        {isCurrent && <span className="w-1.5 h-1.5 rounded-full bg-amber-400" />}
+                        {isCurrent && (
+                          <span className="px-1 py-0.2 rounded text-[9px] font-black bg-amber-400 text-slate-950">
+                            Atual
+                          </span>
+                        )}
                         {formatMonthBR(m)}
                       </span>
-                      <span className="text-[10px] opacity-80 mt-0.5">
+                      <span className="text-[10px] opacity-80 mt-0.5 font-bold">
                         {formatCurrency(mInvoiceTotal)}
                       </span>
                     </button>
                   );
                 })}
               </div>
-            </div>
-          </div>
+            )}
 
-          {/* Statement Table for Selected Month */}
-          <div className="p-6">
-            {cardTransactions.filter((t) => t.cardId === selectedCard.id && t.invoiceMonth === selectedMonth).length === 0 ? (
-              <div className="text-center py-12 text-slate-500">
-                <AlertCircle className="w-8 h-8 mx-auto mb-2 opacity-50 text-slate-400" />
-                <p className="font-semibold text-slate-700 dark:text-slate-300">Nenhum gasto ou parcela para este mês ({formatMonthBR(selectedMonth)}).</p>
-                <p className="text-xs mt-1 text-slate-400">Sua fatura deste mês está quitada ou não possui compras cadastradas.</p>
-              </div>
-            ) : (
-              <div className="max-h-[460px] overflow-y-auto relative border border-slate-200 dark:border-slate-800 rounded-xl">
-                <table className="w-full text-left border-collapse text-sm">
-                  <thead className="sticky top-0 bg-white dark:bg-slate-900 z-10 shadow-2xs">
-                    <tr className="border-b border-slate-200 dark:border-slate-800 text-xs font-semibold text-slate-500 uppercase tracking-wider">
-                      <th className="py-3 px-3">Data da Compra</th>
-                      <th className="py-3 px-3">Descrição</th>
-                      <th className="py-3 px-3">Parcela</th>
-                      <th className="py-3 px-3">Categoria</th>
-                      <th className="py-3 px-3 text-right">Valor Na Fatura</th>
-                      <th className="py-3 px-3 text-center">Ações (Alterar/Excluir)</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-                    {cardTransactions
-                      .filter((t) => t.cardId === selectedCard.id && t.invoiceMonth === selectedMonth)
-                      .sort((a, b) => b.date.localeCompare(a.date))
-                      .map((t) => (
-                        <tr key={t.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/40">
-                          <td className="py-3 px-3 font-medium whitespace-nowrap">{formatDateBR(t.date)}</td>
-                          <td className="py-3 px-3 font-semibold text-slate-800 dark:text-slate-100">{t.description}</td>
-                          <td className="py-3 px-3">
-                            <span className="px-2.5 py-0.5 rounded text-xs font-bold bg-purple-50 text-purple-700 dark:bg-purple-950 dark:text-purple-300 border border-purple-200/50">
-                              {t.currentInstallment}/{t.totalInstallments}
-                            </span>
-                          </td>
-                          <td className="py-3 px-3">
-                            <span className="px-2 py-0.5 rounded text-xs font-medium bg-slate-100 dark:bg-slate-800">
-                              {t.category}
-                            </span>
-                          </td>
-                          <td className="py-3 px-3 text-right font-bold text-red-600 dark:text-red-500 whitespace-nowrap">
-                            -{formatCurrency(t.amount)}
-                          </td>
-                          <td className="py-3 px-3 text-center">
-                            <div className="flex items-center justify-center gap-1">
-                              <button
-                                onClick={() => setEditingCardTx(t)}
-                                className="p-1.5 text-slate-400 hover:text-indigo-600 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors"
-                                title="Alterar este lançamento"
-                              >
-                                <Edit3 className="w-4 h-4" />
-                              </button>
-                              <button
-                                onClick={() => setCardTxToDelete(t)}
-                                className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors"
-                                title="Excluir este lançamento"
-                              >
-                                <Trash2 className="w-4 h-4" />
-                              </button>
-                            </div>
-                          </td>
-                        </tr>
-                      ))}
-                  </tbody>
-                </table>
+            {/* Filter pills when in "Todas as Parcelas" view */}
+            {viewMode === 'all' && (
+              <div className="mt-4 pt-3 border-t border-slate-200/80 dark:border-slate-800/80 flex flex-wrap items-center gap-2">
+                <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">Filtrar parcelas:</span>
+                <button
+                  type="button"
+                  onClick={() => setStatusFilter('ALL')}
+                  className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all ${
+                    statusFilter === 'ALL'
+                      ? 'bg-purple-600 text-white'
+                      : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700'
+                  }`}
+                >
+                  Todas ({cardTransactions.filter((t) => t.cardId === selectedCard.id).length})
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setStatusFilter('CURRENT')}
+                  className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all ${
+                    statusFilter === 'CURRENT'
+                      ? 'bg-amber-500 text-slate-950 font-black'
+                      : 'bg-white dark:bg-slate-800 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-900/50'
+                  }`}
+                >
+                  Mês Corrente ({cardTransactions.filter((t) => t.cardId === selectedCard.id && t.invoiceMonth === currentMonth).length})
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setStatusFilter('FUTURE')}
+                  className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all ${
+                    statusFilter === 'FUTURE'
+                      ? 'bg-blue-600 text-white'
+                      : 'bg-white dark:bg-slate-800 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-900/50'
+                  }`}
+                >
+                  Meses Futuros ({cardTransactions.filter((t) => t.cardId === selectedCard.id && t.invoiceMonth > currentMonth).length})
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setStatusFilter('BILLED')}
+                  className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all ${
+                    statusFilter === 'BILLED'
+                      ? 'bg-emerald-600 text-white'
+                      : 'bg-white dark:bg-slate-800 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-900/50'
+                  }`}
+                >
+                  Faturadas / Anteriores ({cardTransactions.filter((t) => t.cardId === selectedCard.id && t.invoiceMonth < currentMonth).length})
+                </button>
               </div>
             )}
+          </div>
+
+          {/* Statement Table */}
+          <div className="p-6">
+            {(() => {
+              const txList = cardTransactions
+                .filter((t) => {
+                  if (t.cardId !== selectedCard.id) return false;
+                  if (viewMode === 'month') {
+                    return t.invoiceMonth === selectedMonth;
+                  }
+                  // 'all' view mode
+                  if (statusFilter === 'CURRENT') return t.invoiceMonth === currentMonth;
+                  if (statusFilter === 'FUTURE') return t.invoiceMonth > currentMonth;
+                  if (statusFilter === 'BILLED') return t.invoiceMonth < currentMonth;
+                  return true;
+                })
+                .sort((a, b) => {
+                  // Sort primarily by invoice month then date
+                  if (a.invoiceMonth !== b.invoiceMonth) {
+                    return b.invoiceMonth.localeCompare(a.invoiceMonth);
+                  }
+                  return b.date.localeCompare(a.date);
+                });
+
+              if (txList.length === 0) {
+                return (
+                  <div className="text-center py-12 text-slate-500">
+                    <AlertCircle className="w-8 h-8 mx-auto mb-2 opacity-50 text-slate-400" />
+                    <p className="font-semibold text-slate-700 dark:text-slate-300">
+                      {viewMode === 'month'
+                        ? `Nenhum gasto ou parcela para o mês de ${formatMonthBR(selectedMonth)}.`
+                        : 'Nenhuma parcela encontrada para os filtros selecionados.'}
+                    </p>
+                    <p className="text-xs mt-1 text-slate-400">
+                      Cadastre novos lançamentos ou compras parceladas para este cartão.
+                    </p>
+                  </div>
+                );
+              }
+
+              return (
+                <div className="max-h-[460px] overflow-y-auto relative border border-slate-200 dark:border-slate-800 rounded-xl">
+                  <table className="w-full text-left border-collapse text-sm">
+                    <thead className="sticky top-0 bg-white dark:bg-slate-900 z-10 shadow-2xs">
+                      <tr className="border-b border-slate-200 dark:border-slate-800 text-xs font-semibold text-slate-500 uppercase tracking-wider">
+                        <th className="py-3 px-3">Fatura (Mês)</th>
+                        <th className="py-3 px-3">Data Parcela</th>
+                        <th className="py-3 px-3">Data Compra</th>
+                        <th className="py-3 px-3">Descrição</th>
+                        <th className="py-3 px-3">Parcela</th>
+                        <th className="py-3 px-3">Categoria</th>
+                        <th className="py-3 px-3">Status</th>
+                        <th className="py-3 px-3 text-right">Valor Na Fatura</th>
+                        <th className="py-3 px-3 text-center">Ações</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+                      {txList.map((t) => {
+                        const isCurrentMonthTx = t.invoiceMonth === currentMonth;
+                        const isFutureTx = t.invoiceMonth > currentMonth;
+                        const computedStatus = t.status || (isCurrentMonthTx ? 'Aberto' : isFutureTx ? 'Futuro' : 'Faturado');
+
+                        const statusColor =
+                          computedStatus === 'Faturado'
+                            ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300'
+                            : computedStatus === 'Futuro'
+                            ? 'bg-blue-100 text-blue-800 dark:bg-blue-950 dark:text-blue-300'
+                            : 'bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300';
+
+                        return (
+                          <tr key={t.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/40 transition-colors">
+                            <td className="py-3 px-3 font-extrabold text-slate-800 dark:text-slate-200 whitespace-nowrap">
+                              <span className={`px-2 py-0.5 rounded text-xs ${
+                                isCurrentMonthTx
+                                  ? 'bg-amber-100 text-amber-900 dark:bg-amber-950 dark:text-amber-200 font-black border border-amber-300/60'
+                                  : 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-bold'
+                              }`}>
+                                {formatMonthBR(t.invoiceMonth || currentMonth)}
+                              </span>
+                            </td>
+                            <td className="py-3 px-3 font-bold text-slate-800 dark:text-slate-100 whitespace-nowrap">
+                              {formatDateBR(t.date)}
+                            </td>
+                            <td className="py-3 px-3 font-medium text-slate-500 dark:text-slate-400 whitespace-nowrap text-xs">
+                              {t.purchaseDate ? formatDateBR(t.purchaseDate) : formatDateBR(t.date)}
+                            </td>
+                            <td className="py-3 px-3 font-semibold text-slate-800 dark:text-slate-100">{t.description}</td>
+                            <td className="py-3 px-3 whitespace-nowrap">
+                              <span className="px-2.5 py-0.5 rounded text-xs font-bold bg-purple-50 text-purple-700 dark:bg-purple-950 dark:text-purple-300 border border-purple-200/50">
+                                {t.currentInstallment}/{t.totalInstallments}
+                              </span>
+                            </td>
+                            <td className="py-3 px-3 whitespace-nowrap">
+                              <span className="px-2 py-0.5 rounded text-xs font-medium bg-slate-100 dark:bg-slate-800">
+                                {t.category}
+                              </span>
+                            </td>
+                            <td className="py-3 px-3 whitespace-nowrap">
+                              <span className={`px-2 py-0.5 rounded text-[11px] font-bold ${statusColor}`}>
+                                {computedStatus}
+                              </span>
+                            </td>
+                            <td className="py-3 px-3 text-right font-bold text-red-600 dark:text-red-500 whitespace-nowrap">
+                              -{formatCurrency(t.amount)}
+                            </td>
+                            <td className="py-3 px-3 text-center">
+                              <div className="flex items-center justify-center gap-1">
+                                <button
+                                  onClick={() => setEditingCardTx(t)}
+                                  className="p-1.5 text-slate-400 hover:text-indigo-600 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors"
+                                  title="Alterar este lançamento"
+                                >
+                                  <Edit3 className="w-4 h-4" />
+                                </button>
+                                <button
+                                  onClick={() => setCardTxToDelete(t)}
+                                  className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors"
+                                  title="Excluir este lançamento"
+                                >
+                                  <Trash2 className="w-4 h-4" />
+                                </button>
+                              </div>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              );
+            })()}
           </div>
         </div>
       )}
 
       {/* ISOLATED MODALS */}
-      <AddCardModal
-        isOpen={showAddCardModal}
-        onClose={() => setShowAddCardModal(false)}
-        onAdd={onAddCard}
-      />
+      {showAddCardModal && (
+        <AddCardModal
+          isOpen={showAddCardModal}
+          onClose={() => setShowAddCardModal(false)}
+          onAdd={onAddCard}
+        />
+      )}
 
       <EditCardModal
         key={editingCard?.id || 'edit-card-modal'}
@@ -1282,14 +1757,16 @@ export const CreditCardsView: React.FC<CreditCardsViewProps> = ({
         onDeleteRequest={(c) => setCardToDelete(c)}
       />
 
-      <InstallmentModal
-        isOpen={showInstallmentModal}
-        cards={cards}
-        selectedCardId={selectedCardId}
-        categories={activeCategories}
-        onClose={() => setShowInstallmentModal(false)}
-        onAddTransaction={onAddCardTransaction}
-      />
+      {showInstallmentModal && (
+        <InstallmentModal
+          isOpen={showInstallmentModal}
+          cards={cards}
+          selectedCardId={selectedCardId}
+          categories={activeCategories}
+          onClose={() => setShowInstallmentModal(false)}
+          onAddTransaction={onAddCardTransaction}
+        />
+      )}
 
       <EditCardTxModal
         key={editingCardTx?.id || 'edit-card-tx-modal'}

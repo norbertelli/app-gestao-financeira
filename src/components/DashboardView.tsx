@@ -39,6 +39,8 @@ import {
   CalendarClock,
   Bell,
   AlertTriangle,
+  Search,
+  Receipt,
   X,
 } from 'lucide-react';
 import {
@@ -80,7 +82,32 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   onNavigateTab,
 }) => {
   const [showUrgentModal, setShowUrgentModal] = useState(false);
+  const [selectedDashboardCardId, setSelectedDashboardCardId] = useState<string>('ALL');
+  const [dashboardTxSearch, setDashboardTxSearch] = useState<string>('');
+
   const currentMonth = getCurrentYearMonth();
+
+  // Transactions belonging to the CURRENT month invoice
+  const currentMonthCardTxs = cardTransactions.filter((t) => t.invoiceMonth === currentMonth);
+  const totalCurrentMonthCardDebt = currentMonthCardTxs.reduce(
+    (sum, t) => sum + Math.abs(t.amount),
+    0
+  );
+
+  const filteredCurrentMonthTxs = currentMonthCardTxs.filter((t) => {
+    if (selectedDashboardCardId !== 'ALL' && t.cardId !== selectedDashboardCardId) {
+      return false;
+    }
+    if (dashboardTxSearch.trim()) {
+      const term = dashboardTxSearch.toLowerCase();
+      const descMatch = t.description.toLowerCase().includes(term);
+      const catMatch = t.category.toLowerCase().includes(term);
+      const card = cards.find((c) => c.id === t.cardId);
+      const cardMatch = card?.name.toLowerCase().includes(term);
+      if (!descMatch && !catMatch && !cardMatch) return false;
+    }
+    return true;
+  });
 
   // Date calculation for monitoring payments due in < 3 days
   const todayDate = new Date();
@@ -305,20 +332,25 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           )}
         </div>
 
-        {/* Total Credit Cards Outstanding Debt */}
+        {/* Total Credit Cards Current Month & Outstanding Debt */}
         <div className="bg-white dark:bg-slate-900 p-5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-2xs hover:border-slate-300 dark:hover:border-slate-700 transition-all">
           <div className="flex items-center justify-between text-slate-500 dark:text-slate-400 mb-2">
-            <span className="text-xs font-semibold uppercase tracking-wider">Faturas & Parcelas</span>
+            <span className="text-xs font-semibold uppercase tracking-wider">Fatura Mês Corrente</span>
             <div className="p-2 bg-red-50 dark:bg-red-950/50 text-red-600 dark:text-red-400 rounded-xl">
               <CardIcon className="w-5 h-5" />
             </div>
           </div>
           <div className="text-2xl sm:text-3xl font-black text-red-600 dark:text-red-500 font-bold">
-            {formatCurrency(totalCardsOutstanding)}
+            {formatCurrency(totalCurrentMonthCardDebt)}
           </div>
-          <p className="text-xs text-slate-500 dark:text-slate-400 mt-2">
-            Projetado nos próximos meses
-          </p>
+          <div className="mt-2 text-xs space-y-0.5">
+            <span className="text-slate-500 dark:text-slate-400 font-medium block">
+              Mês: <strong className="text-slate-800 dark:text-slate-200">{formatMonthBR(currentMonth)}</strong> ({currentMonthCardTxs.length} lançamentos)
+            </span>
+            <span className="text-purple-600 dark:text-purple-400 font-semibold block">
+              Total Geral Projetado: {formatCurrency(totalCardsOutstanding)}
+            </span>
+          </div>
         </div>
 
         {/* Total Investments */}
@@ -335,6 +367,275 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           <p className="text-xs text-slate-500 dark:text-slate-400 mt-2">
             {investments.length} carteiras/ativos aplicados
           </p>
+        </div>
+      </div>
+
+      {/* SEÇÃO DEDICADA: FATURAS & PARCELAS DO MÊS CORRENTE */}
+      <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-2xs overflow-hidden">
+        {/* Header with Title, Month Badge and Overview */}
+        <div className="p-5 border-b border-slate-200 dark:border-slate-800 bg-gradient-to-r from-purple-50/70 via-indigo-50/40 to-transparent dark:from-purple-950/30 dark:via-slate-800/30 dark:to-transparent flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div>
+            <div className="flex items-center gap-2">
+              <div className="p-2 bg-purple-100 dark:bg-purple-900/50 text-purple-700 dark:text-purple-300 rounded-xl flex-shrink-0">
+                <CardIcon className="w-5 h-5" />
+              </div>
+              <div>
+                <div className="flex items-center gap-2 flex-wrap">
+                  <h2 className="text-lg font-bold text-slate-900 dark:text-slate-100">
+                    Faturas & Parcelas do Mês Corrente
+                  </h2>
+                  <span className="px-2.5 py-0.5 rounded-full text-xs font-black bg-purple-600 text-white shadow-xs">
+                    {formatMonthBR(currentMonth)}
+                  </span>
+                </div>
+                <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                  Extrato consolidado de compras e parcelas com vencimento na fatura deste mês
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-3">
+            <div className="bg-white dark:bg-slate-800/90 px-3.5 py-2 rounded-xl border border-purple-200 dark:border-purple-900/60 shadow-2xs flex items-center gap-2">
+              <span className="text-xs text-slate-500 dark:text-slate-400 font-medium">Total a Pagar no Mês:</span>
+              <span className="text-base font-black text-red-600 dark:text-red-400">
+                -{formatCurrency(totalCurrentMonthCardDebt)}
+              </span>
+            </div>
+
+            {onNavigateTab && (
+              <button
+                onClick={() => onNavigateTab('credit-cards')}
+                className="px-3.5 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-xl text-xs font-bold transition-all inline-flex items-center gap-1.5 shadow-xs"
+              >
+                <span>Gerenciar Cartões</span>
+                <ChevronRight className="w-4 h-4" />
+              </button>
+            )}
+          </div>
+        </div>
+
+        {/* Cards Mini Summary Bar */}
+        {cards.length > 0 && (
+          <div className="p-5 border-b border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/20">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+              {cards.map((card) => {
+                const cardCurrentInvoice = calculateCardCurrentInvoice(card.id, cardTransactions, currentMonth);
+                const cardTxsCount = currentMonthCardTxs.filter((t) => t.cardId === card.id).length;
+                const isSelected = selectedDashboardCardId === card.id;
+
+                return (
+                  <div
+                    key={card.id}
+                    onClick={() => setSelectedDashboardCardId(isSelected ? 'ALL' : card.id)}
+                    className={`p-3.5 rounded-xl border transition-all cursor-pointer flex items-center justify-between gap-3 ${
+                      isSelected
+                        ? 'bg-purple-50 dark:bg-purple-950/40 border-purple-400 dark:border-purple-600 shadow-xs'
+                        : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 hover:border-purple-300 dark:hover:border-purple-700'
+                    }`}
+                  >
+                    <div className="flex items-center gap-2.5 min-w-0">
+                      <div
+                        className="w-3.5 h-3.5 rounded-full flex-shrink-0"
+                        style={{ backgroundColor: card.color }}
+                      />
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-1.5 truncate">
+                          <span className="font-bold text-xs text-slate-800 dark:text-slate-200 truncate">
+                            {card.name}
+                          </span>
+                          <span className="text-[10px] text-slate-400 flex-shrink-0">
+                            (**** {card.lastFourDigits})
+                          </span>
+                        </div>
+                        <span className="text-[11px] text-slate-500 dark:text-slate-400 block mt-0.5">
+                          Venc: Dia {card.dueDay} • {cardTxsCount} item(s) no mês
+                        </span>
+                      </div>
+                    </div>
+
+                    <div className="text-right flex-shrink-0">
+                      <span className="text-xs font-black text-red-600 dark:text-red-400 block">
+                        -{formatCurrency(cardCurrentInvoice)}
+                      </span>
+                      <span className="text-[10px] text-purple-600 dark:text-purple-400 font-semibold hover:underline">
+                        {isSelected ? 'Limpar filtro' : 'Filtrar'}
+                      </span>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
+        {/* Filter Controls & Search */}
+        <div className="px-5 py-3 border-b border-slate-100 dark:border-slate-800 flex flex-wrap items-center justify-between gap-3 bg-white dark:bg-slate-900">
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">Filtrar:</span>
+            <button
+              onClick={() => setSelectedDashboardCardId('ALL')}
+              className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all ${
+                selectedDashboardCardId === 'ALL'
+                  ? 'bg-purple-600 text-white'
+                  : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200'
+              }`}
+            >
+              Todos os Cartões ({currentMonthCardTxs.length})
+            </button>
+
+            {cards.map((c) => (
+              <button
+                key={c.id}
+                onClick={() => setSelectedDashboardCardId(c.id)}
+                className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 ${
+                  selectedDashboardCardId === c.id
+                    ? 'bg-purple-600 text-white shadow-xs'
+                    : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200'
+                }`}
+              >
+                <div className="w-2 h-2 rounded-full" style={{ backgroundColor: c.color }} />
+                <span>{c.name}</span>
+              </button>
+            ))}
+          </div>
+
+          <div className="flex items-center gap-2">
+            <div className="relative">
+              <Search className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-1/2 -translate-y-1/2" />
+              <input
+                type="text"
+                placeholder="Buscar lançamento..."
+                value={dashboardTxSearch}
+                onChange={(e) => setDashboardTxSearch(e.target.value)}
+                className="pl-8 pr-6 py-1 bg-slate-100 dark:bg-slate-800 border-none rounded-lg text-xs text-slate-800 dark:text-slate-200 placeholder-slate-400 focus:ring-1 focus:ring-purple-500 outline-none w-44 sm:w-56"
+              />
+              {dashboardTxSearch && (
+                <button
+                  onClick={() => setDashboardTxSearch('')}
+                  className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 text-xs font-bold"
+                >
+                  ✕
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* Statement Table of Current Month Installments & Purchases */}
+        <div className="p-5">
+          {filteredCurrentMonthTxs.length === 0 ? (
+            <div className="text-center py-8 text-slate-500">
+              <CardIcon className="w-8 h-8 mx-auto mb-2 opacity-40 text-purple-400" />
+              <p className="font-semibold text-slate-700 dark:text-slate-300">
+                Nenhum lançamento ou parcela para este mês ({formatMonthBR(currentMonth)}).
+              </p>
+              <p className="text-xs mt-1 text-slate-400">
+                Não há cobranças previstas para os cartões no período selecionado.
+              </p>
+            </div>
+          ) : (
+            <div className="overflow-x-auto max-h-[420px] overflow-y-auto relative border border-slate-200 dark:border-slate-800 rounded-xl">
+              <table className="w-full text-left border-collapse text-sm">
+                <thead className="sticky top-0 bg-white dark:bg-slate-900 z-10 shadow-2xs">
+                  <tr className="border-b border-slate-200 dark:border-slate-800 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+                    <th className="py-3 px-3">Cartão / Banco</th>
+                    <th className="py-3 px-3">Data Parcela</th>
+                    <th className="py-3 px-3">Data Compra</th>
+                    <th className="py-3 px-3">Descrição</th>
+                    <th className="py-3 px-3">Parcela</th>
+                    <th className="py-3 px-3">Categoria</th>
+                    <th className="py-3 px-3">Status</th>
+                    <th className="py-3 px-3 text-right">Valor na Fatura</th>
+                    <th className="py-3 px-3 text-center">Ações</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+                  {filteredCurrentMonthTxs
+                    .sort((a, b) => b.date.localeCompare(a.date))
+                    .map((t) => {
+                      const card = cards.find((c) => c.id === t.cardId);
+                      const isInstallment = (t.totalInstallments || 1) > 1;
+
+                      return (
+                        <tr
+                          key={t.id}
+                          className="hover:bg-purple-50/30 dark:hover:bg-purple-950/20 transition-colors"
+                        >
+                          <td className="py-3 px-3 font-semibold text-slate-800 dark:text-slate-200 whitespace-nowrap">
+                            <div className="flex items-center gap-2">
+                              <div
+                                className="w-2.5 h-2.5 rounded-full flex-shrink-0"
+                                style={{ backgroundColor: card?.color || '#9333EA' }}
+                              />
+                              <div>
+                                <span className="font-bold text-xs">{card?.name || 'Cartão'}</span>
+                                <span className="text-[10px] text-slate-400 block">
+                                  **** {card?.lastFourDigits}
+                                </span>
+                              </div>
+                            </div>
+                          </td>
+
+                          <td className="py-3 px-3 font-bold text-slate-800 dark:text-slate-100 whitespace-nowrap">
+                            {formatDateBR(t.date)}
+                          </td>
+
+                          <td className="py-3 px-3 text-xs text-slate-500 dark:text-slate-400 whitespace-nowrap">
+                            {t.purchaseDate ? formatDateBR(t.purchaseDate) : '-'}
+                          </td>
+
+                          <td className="py-3 px-3 font-semibold text-slate-900 dark:text-slate-100">
+                            {t.description}
+                          </td>
+
+                          <td className="py-3 px-3 whitespace-nowrap">
+                            {isInstallment ? (
+                              <span className="px-2 py-0.5 rounded text-xs font-black bg-purple-100 text-purple-900 dark:bg-purple-950 dark:text-purple-300 border border-purple-200 dark:border-purple-800">
+                                {t.currentInstallment}/{t.totalInstallments}
+                              </span>
+                            ) : (
+                              <span className="px-2 py-0.5 rounded text-xs font-semibold bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400">
+                                À vista
+                              </span>
+                            )}
+                          </td>
+
+                          <td className="py-3 px-3 whitespace-nowrap">
+                            <span className="px-2 py-0.5 rounded text-xs bg-slate-100 dark:bg-slate-800 font-medium text-slate-700 dark:text-slate-300">
+                              {t.category}
+                            </span>
+                          </td>
+
+                          <td className="py-3 px-3 whitespace-nowrap">
+                            <span className="px-2 py-0.5 rounded text-[11px] font-bold bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300">
+                              {t.status || 'Aberto'}
+                            </span>
+                          </td>
+
+                          <td className="py-3 px-3 text-right font-black text-red-600 dark:text-red-500 whitespace-nowrap">
+                            -{formatCurrency(Math.abs(t.amount))}
+                          </td>
+
+                          <td className="py-3 px-3 text-center whitespace-nowrap">
+                            {card && (
+                              <button
+                                onClick={() => onOpenStatementModal('card', card)}
+                                className="px-2.5 py-1 text-xs font-semibold text-purple-600 dark:text-purple-400 hover:bg-purple-100 dark:hover:bg-purple-950/60 rounded-lg transition-colors inline-flex items-center gap-1"
+                                title="Ver Fatura Completa deste Cartão"
+                              >
+                                <span>Extrato</span>
+                                <ExternalLink className="w-3 h-3" />
+                              </button>
+                            )}
+                          </td>
+                        </tr>
+                      );
+                    })}
+                </tbody>
+              </table>
+            </div>
+          )}
         </div>
       </div>
 

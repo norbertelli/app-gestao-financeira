@@ -626,6 +626,7 @@ function CardStatementList({
       <table className="w-full text-left border-collapse text-sm">
         <thead className="sticky top-0 bg-white dark:bg-slate-900 z-10 shadow-2xs">
           <tr className="border-b border-slate-200 dark:border-slate-800 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+            <th className="py-3 px-3">Data Parcela</th>
             <th className="py-3 px-3">Data Compra</th>
             <th className="py-3 px-3">Descrição</th>
             <th className="py-3 px-3">Parcela</th>
@@ -637,8 +638,11 @@ function CardStatementList({
         <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
           {filtered.map((t) => (
             <tr key={t.id} className="hover:bg-slate-50/80 dark:hover:bg-slate-800/40 transition-colors">
-              <td className="py-2.5 px-3 font-medium text-slate-600 dark:text-slate-300 whitespace-nowrap">
+              <td className="py-2.5 px-3 font-bold text-slate-800 dark:text-slate-100 whitespace-nowrap">
                 {formatDateBR(t.date)}
+              </td>
+              <td className="py-2.5 px-3 font-medium text-slate-500 dark:text-slate-400 whitespace-nowrap text-xs">
+                {t.purchaseDate ? formatDateBR(t.purchaseDate) : formatDateBR(t.date)}
               </td>
               <td className="py-2.5 px-3 font-medium text-slate-800 dark:text-slate-100">
                 {t.description}

@@ -67,7 +67,8 @@ export interface CreditCard {
 export interface CardTransaction {
   id: string;
   cardId: string;
-  date: string; // YYYY-MM-DD
+  date: string; // YYYY-MM-DD (Data da Parcela / Vencimento no Mês)
+  purchaseDate?: string; // YYYY-MM-DD (Data da Compra Original)
   description: string;
   amount: number; // Expense value (positive or negative)
   category: TransactionCategory;
