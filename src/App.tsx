@@ -13,6 +13,7 @@ import {
   CategoryItem,
   NotificationSettings,
   NotificationLog,
+  Debt,
 } from './types';
 import {
   INITIAL_BANK_ACCOUNTS,
@@ -26,6 +27,7 @@ import {
   INITIAL_CATEGORIES,
   INITIAL_NOTIFICATION_SETTINGS,
   INITIAL_NOTIFICATION_LOGS,
+  INITIAL_DEBTS,
 } from './data/initialData';
 import { calculateTotalNetWorth } from './utils/financeUtils';
 import { getUpcomingBillsAlerts } from './services/reminderService';
@@ -33,6 +35,7 @@ import { Navbar } from './components/Navbar';
 import { DashboardView } from './components/DashboardView';
 import { BankAccountsView } from './components/BankAccountsView';
 import { CreditCardsView } from './components/CreditCardsView';
+import { DebtsView } from './components/DebtsView';
 import { InvestmentsView } from './components/InvestmentsView';
 import { FuturePaymentsView } from './components/FuturePaymentsView';
 import { SmartReaderView } from './components/SmartReaderView';
@@ -57,6 +60,9 @@ import {
   subscribeCardTransactions,
   saveCardTransactionDoc,
   deleteCardTransactionDoc,
+  subscribeDebts,
+  saveDebtDoc,
+  deleteDebtDoc,
   subscribeInvestments,
   saveInvestmentDoc,
   deleteInvestmentDoc,
@@ -102,6 +108,11 @@ export default function App() {
   const [cardTransactions, setCardTransactions] = useState<CardTransaction[]>(() => {
     const saved = localStorage.getItem('finflow_card_txs');
     return saved ? JSON.parse(saved) : INITIAL_CARD_TRANSACTIONS;
+  });
+
+  const [debts, setDebts] = useState<Debt[]>(() => {
+    const saved = localStorage.getItem('finflow_debts');
+    return saved ? JSON.parse(saved) : INITIAL_DEBTS;
   });
 
   const [investments, setInvestments] = useState<Investment[]>(() => {
@@ -164,6 +175,7 @@ export default function App() {
       bankTransactions: bankTransactions.length > 0 ? bankTransactions : INITIAL_BANK_TRANSACTIONS,
       cards: cards.length > 0 ? cards : INITIAL_CREDIT_CARDS,
       cardTransactions: cardTransactions.length > 0 ? cardTransactions : INITIAL_CARD_TRANSACTIONS,
+      debts: debts.length > 0 ? debts : INITIAL_DEBTS,
       investments: investments.length > 0 ? investments : INITIAL_INVESTMENTS,
       investmentTransactions: investmentTransactions.length > 0 ? investmentTransactions : INITIAL_INVESTMENT_TRANSACTIONS,
       futurePayments: futurePayments.length > 0 ? futurePayments : INITIAL_FUTURE_PAYMENTS,
@@ -188,6 +200,10 @@ export default function App() {
 
     const unsubCardTxs = subscribeCardTransactions(user.uid, (data) => {
       setCardTransactions(data);
+    });
+
+    const unsubDebts = subscribeDebts(user.uid, (data) => {
+      setDebts(data);
     });
 
     const unsubInvs = subscribeInvestments(user.uid, (data) => {
@@ -223,6 +239,7 @@ export default function App() {
       unsubBankTxs();
       unsubCards();
       unsubCardTxs();
+      unsubDebts();
       unsubInvs();
       unsubInvTxs();
       unsubFuturePmts();
@@ -249,6 +266,10 @@ export default function App() {
   useEffect(() => {
     if (!user) localStorage.setItem('finflow_card_txs', JSON.stringify(cardTransactions));
   }, [cardTransactions, user]);
+
+  useEffect(() => {
+    if (!user) localStorage.setItem('finflow_debts', JSON.stringify(debts));
+  }, [debts, user]);
 
   useEffect(() => {
     if (!user) localStorage.setItem('finflow_investments', JSON.stringify(investments));
@@ -286,6 +307,7 @@ export default function App() {
       bankTransactions,
       cards,
       cardTransactions,
+      debts,
       investments,
       investmentTransactions,
       futurePayments,
@@ -502,6 +524,57 @@ export default function App() {
     setInvestmentTransactions((prev) => prev.filter((t) => t.id !== id));
   };
 
+  // Handlers for Debts & Loans / Dívidas e Empréstimos (CRUD & Payment)
+  const handleSaveDebt = async (debt: Debt) => {
+    if (user) {
+      await saveDebtDoc(user.uid, debt);
+    }
+    setDebts((prev) => {
+      const idx = prev.findIndex((d) => d.id === debt.id);
+      if (idx >= 0) {
+        const copy = [...prev];
+        copy[idx] = debt;
+        return copy;
+      }
+      return [...prev, debt];
+    });
+  };
+
+  const handleDeleteDebt = async (debtId: string) => {
+    if (user) {
+      await deleteDebtDoc(user.uid, debtId);
+    }
+    setDebts((prev) => prev.filter((d) => d.id !== debtId));
+  };
+
+  const handlePayDebtInstallment = async (debt: Debt, accountId?: string) => {
+    const nextInstallment = (debt.currentInstallment || 0) + 1;
+    const newStatus = nextInstallment >= debt.totalInstallments ? 'Quitado' : 'Ativo';
+    const updatedDebt: Debt = {
+      ...debt,
+      currentInstallment: nextInstallment,
+      status: newStatus,
+      updatedAt: new Date().toISOString(),
+    };
+
+    await handleSaveDebt(updatedDebt);
+
+    // If user selected a bank account, register a bank transaction debit
+    if (accountId) {
+      const today = new Date().toISOString().split('T')[0];
+      handleAddBankTx({
+        accountId,
+        date: today,
+        description: `Parcela ${nextInstallment}/${debt.totalInstallments} - ${debt.creditor}`,
+        amount: -Math.abs(debt.installmentAmount),
+        category: 'Empréstimos / Dívidas',
+        type: 'Boleto',
+        status: 'Concluído',
+        notes: `Pagamento de parcela contratual (${debt.category || 'Empréstimo'})`,
+      });
+    }
+  };
+
   // Handlers for Future Payments (Contas a Pagar CRUD)
   const handleAddFuturePayment = (payment: Omit<FuturePayment, 'id'>) => {
     const newPmt: FuturePayment = {
@@ -688,6 +761,7 @@ export default function App() {
           bankTransactions: INITIAL_BANK_TRANSACTIONS,
           cards: INITIAL_CREDIT_CARDS,
           cardTransactions: INITIAL_CARD_TRANSACTIONS,
+          debts: INITIAL_DEBTS,
           investments: INITIAL_INVESTMENTS,
           investmentTransactions: INITIAL_INVESTMENT_TRANSACTIONS,
           futurePayments: INITIAL_FUTURE_PAYMENTS,
@@ -701,6 +775,7 @@ export default function App() {
         setBankTransactions(INITIAL_BANK_TRANSACTIONS);
         setCards(INITIAL_CREDIT_CARDS);
         setCardTransactions(INITIAL_CARD_TRANSACTIONS);
+        setDebts(INITIAL_DEBTS);
         setInvestments(INITIAL_INVESTMENTS);
         setInvestmentTransactions(INITIAL_INVESTMENT_TRANSACTIONS);
         setFuturePayments(INITIAL_FUTURE_PAYMENTS);
@@ -772,6 +847,7 @@ export default function App() {
             investments={investments}
             investmentTransactions={investmentTransactions}
             futurePayments={futurePayments}
+            debts={debts}
             onOpenStatementModal={handleOpenStatementModal}
             onOpenSmartReader={() => setActiveTab('smart-reader')}
             onNavigateTab={(tab) => setActiveTab(tab)}
@@ -806,6 +882,16 @@ export default function App() {
             onEditCardTransaction={handleEditCardTx}
             onDeleteCardTransaction={handleDeleteCardTx}
             onOpenStatementModal={(type, entity) => handleOpenStatementModal(type, entity)}
+          />
+        )}
+
+        {activeTab === 'debts' && (
+          <DebtsView
+            debts={debts}
+            bankAccounts={accounts}
+            onSaveDebt={handleSaveDebt}
+            onDeleteDebt={handleDeleteDebt}
+            onPayInstallment={handlePayDebtInstallment}
           />
         )}
 

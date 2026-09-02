@@ -10,6 +10,7 @@ import {
   CategoryItem,
   NotificationSettings,
   NotificationLog,
+  Debt,
 } from '../types';
 
 export const INITIAL_BANK_ACCOUNTS: BankAccount[] = [
@@ -601,4 +602,49 @@ export const INITIAL_CATEGORIES: CategoryItem[] = [
   { id: 'cat_11', name: 'Rendimento', type: 'Receita', color: '#10B981', description: 'Juros, proventos, dividendos e rendimento de contas', isSystem: true },
   { id: 'cat_12', name: 'Transferência', type: 'Ambos', color: '#820AD1', description: 'Transferência entre contas e reembolsos', isSystem: true },
   { id: 'cat_13', name: 'Outros', type: 'Ambos', color: '#94A3B8', description: 'Outras movimentações gerais', isSystem: true },
+];
+
+export const INITIAL_DEBTS: Debt[] = [
+  {
+    id: 'debt_1',
+    creditor: 'Caixa Econômica Federal',
+    loanAmount: 180000.00,
+    dueDate: 'Dia 10',
+    totalInstallments: 120,
+    currentInstallment: 28,
+    installmentAmount: 1850.00,
+    category: 'Financiamento Imobiliário',
+    status: 'Ativo',
+    startDate: '2024-05-10',
+    interestRate: '9.5% a.a.',
+    notes: 'Contrato nº 872914-X / Alienação Fiduciária',
+  },
+  {
+    id: 'debt_2',
+    creditor: 'Banco Santander',
+    loanAmount: 45000.00,
+    dueDate: 'Dia 15',
+    totalInstallments: 48,
+    currentInstallment: 14,
+    installmentAmount: 1280.50,
+    category: 'Financiamento Veicular',
+    status: 'Ativo',
+    startDate: '2025-06-15',
+    interestRate: '1.49% a.m.',
+    notes: 'Veículo Toyota Corolla - Parcela debitada em conta',
+  },
+  {
+    id: 'debt_3',
+    creditor: 'Banco Itaú',
+    loanAmount: 15000.00,
+    dueDate: 'Dia 05',
+    totalInstallments: 24,
+    currentInstallment: 18,
+    installmentAmount: 785.40,
+    category: 'Empréstimo Pessoal',
+    status: 'Ativo',
+    startDate: '2025-02-05',
+    interestRate: '2.1% a.m.',
+    notes: 'Crédito Pessoal pré-aprovado para reforma',
+  },
 ];

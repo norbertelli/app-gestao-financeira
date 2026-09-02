@@ -226,6 +226,28 @@
         "responseMessage": { "type": "string", "maxLength": 512 }
       },
       "required": ["id", "timestamp", "channel", "recipient", "title", "message", "paymentsCount", "totalAmount", "status"]
+    },
+    "Debt": {
+      "title": "Debt",
+      "description": "User debts, loans and financing records",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128 },
+        "creditor": { "type": "string", "maxLength": 128 },
+        "loanAmount": { "type": "number" },
+        "dueDate": { "type": "string", "maxLength": 64 },
+        "totalInstallments": { "type": "number" },
+        "currentInstallment": { "type": "number" },
+        "installmentAmount": { "type": "number" },
+        "category": { "type": "string", "maxLength": 64 },
+        "status": { "type": "string", "maxLength": 32 },
+        "startDate": { "type": "string", "maxLength": 64 },
+        "interestRate": { "type": "string", "maxLength": 64 },
+        "notes": { "type": "string", "maxLength": 512 },
+        "createdAt": { "type": "string", "maxLength": 64 },
+        "updatedAt": { "type": "string", "maxLength": 64 }
+      },
+      "required": ["id", "creditor", "loanAmount", "dueDate", "totalInstallments", "installmentAmount"]
     }
   },
   "firestore": {
@@ -248,6 +270,10 @@
     "/users/{userId}/cardTransactions/{txId}": {
       "schema": "CardTransaction",
       "description": "Card transactions and installments"
+    },
+    "/users/{userId}/debts/{debtId}": {
+      "schema": "Debt",
+      "description": "User loans and debts"
     },
     "/users/{userId}/investments/{investmentId}": {
       "schema": "Investment",

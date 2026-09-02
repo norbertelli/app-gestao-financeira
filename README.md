@@ -15,12 +15,22 @@ Sistema completo para controle e gestão financeira pessoal e empresarial, com s
 ### 2. 💳 Cartões de Crédito & Compras Parceladas
 - **Controle de Limites**: Acompanhamento do limite total, valor comprometido (fatura atual + parcelas futuras) e limite disponível em tempo real.
 - **Lançamento Rápido de Parcelamento**: Registro de compras parceladas com atalhos de 1 clique para definir a 1ª fatura (**Mês Corrente**, **Próximo Mês** ou **Auto Fechamento**), e limpeza automática de campos.
-- **Faturas & Parcelas no Dashboard**: Seção no painel principal exibindo as faturas e parcelas do mês corrente com mini cards por cartão, busca rápida e extrato consolidado.
+- **Faturas & Parcelas no Dashboard**: Seção no painel principal exibindo as faturas e parcelas do mês corrente com mini cards por cartão, busca rápida, extrato consolidado e exibição da **Data da Compra** antes da **Data da Parcela**.
 - **Visualização Flexível**: Alternância entre visão mensal de faturas e tabela unificada de todas as parcelas com filtros por status.
 - **Fechamento e Vencimento**: Configuração dos dias de corte e vencimento de cada cartão.
 - **Pagamento de Fatura**: Liquidação direta da fatura debitando o montante na conta bancária de preferência.
 
-### 3. 📈 Carteira de Investimentos & Rendimentos
+### 3. 🏛️ Gestão de Dívidas & Empréstimos (Novo)
+- **Tabela Dedicada para Empréstimos e Financiamentos**: Cadastro e acompanhamento detalhado de passivos financeiros com:
+  - **Credor / Instituição**: Banco, financeira ou pessoa credora.
+  - **Valor do Empréstimo / Financiamento**: Montante total contratado.
+  - **Vencimento**: Dia do mês ou data de vencimento da parcela.
+  - **Número de Parcelas**: Total de parcelas e progresso de quitação (ex.: Parcela 12/36).
+  - **Valor da Parcela**: Custo unitário mensal.
+  - **Saldo Devedor Restante**: Cálculo automático com barra de progresso visual de amortização.
+- **Baixa de Parcelas com Integração Bancária**: Permite registrar o pagamento de cada parcela individualmente, com débito automático no extrato da conta bancária de sua escolha.
+
+### 4. 📈 Carteira de Investimentos & Rendimentos
 - **Diversas Classes de Ativos**: Renda Fixa (CDB, Tesouro Direto, LCI/LCA), Ações, FIIs (Fundos Imobiliários), Fundos de Investimento, Criptoativos e Previdência Privada.
 - **Lançamento de Movimentações**: Registro de rendimentos/lucros (+), novos aportes (+), proventos/dividendos (+), resgates parciais (-) e taxas/impostos (-).
 - **Saldo Patrimonial Dinâmico**: Acompanhamento do valor investido versus saldo total valorizado.

@@ -130,6 +130,23 @@ export interface ParsedStatementItem {
 export type PaymentStatus = 'Pendente' | 'Pago' | 'Em Aberto';
 export type PaymentNature = 'Pagar' | 'Receber';
 
+export interface Debt {
+  id: string;
+  creditor: string; // Credor (ex: Banco Itaú, Caixa Econômica, Santander, Financiamento, etc.)
+  loanAmount: number; // Valor do Empréstimo (Total)
+  dueDate: string; // Vencimento (ex: "Dia 10" ou "2026-08-10")
+  totalInstallments: number; // Número de Parcelas (ex: 24, 36, 48)
+  currentInstallment?: number; // Parcela Atual / Paga (ex: 5)
+  installmentAmount: number; // Valor da Parcela (ex: 850.00)
+  category?: string; // Categoria (ex: Empréstimo Pessoal, Financiamento Imobiliário, Financiamento Veicular, Consignado)
+  status?: 'Ativo' | 'Quitado' | 'Pendente';
+  startDate?: string; // Data de Início / Contratação
+  interestRate?: string; // Taxa de juros (ex: 1.49% a.m.)
+  notes?: string;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
 export interface FuturePayment {
   id: string;
   dueDate: string; // YYYY-MM-DD
@@ -206,6 +223,7 @@ export type ActiveTab =
   | 'dashboard'
   | 'accounts'
   | 'cards'
+  | 'debts'
   | 'investments'
   | 'future-payments'
   | 'smart-reader'

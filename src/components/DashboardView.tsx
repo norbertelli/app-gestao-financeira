@@ -7,6 +7,7 @@ import {
   Investment,
   InvestmentTransaction,
   FuturePayment,
+  Debt,
 } from '../types';
 import {
   formatCurrency,
@@ -24,6 +25,7 @@ import {
 } from '../utils/financeUtils';
 import {
   Building2,
+  Landmark,
   CreditCard as CardIcon,
   TrendingUp,
   ArrowUpRight,
@@ -64,6 +66,7 @@ interface DashboardViewProps {
   investments: Investment[];
   investmentTransactions: InvestmentTransaction[];
   futurePayments?: FuturePayment[];
+  debts?: Debt[];
   onOpenStatementModal: (type: 'bank' | 'card' | 'investment', entity: any) => void;
   onOpenSmartReader: () => void;
   onNavigateTab?: (tab: any) => void;
@@ -77,6 +80,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   investments,
   investmentTransactions,
   futurePayments = [],
+  debts = [],
   onOpenStatementModal,
   onOpenSmartReader,
   onNavigateTab,
@@ -540,8 +544,8 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                 <thead className="sticky top-0 bg-white dark:bg-slate-900 z-10 shadow-2xs">
                   <tr className="border-b border-slate-200 dark:border-slate-800 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
                     <th className="py-3 px-3">Cartão / Banco</th>
-                    <th className="py-3 px-3">Data Parcela</th>
                     <th className="py-3 px-3">Data Compra</th>
+                    <th className="py-3 px-3">Data Parcela</th>
                     <th className="py-3 px-3">Descrição</th>
                     <th className="py-3 px-3">Parcela</th>
                     <th className="py-3 px-3">Categoria</th>
@@ -577,12 +581,12 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                             </div>
                           </td>
 
-                          <td className="py-3 px-3 font-bold text-slate-800 dark:text-slate-100 whitespace-nowrap">
-                            {formatDateBR(t.date)}
+                          <td className="py-3 px-3 text-xs font-semibold text-slate-700 dark:text-slate-300 whitespace-nowrap">
+                            {t.purchaseDate ? formatDateBR(t.purchaseDate) : '-'}
                           </td>
 
-                          <td className="py-3 px-3 text-xs text-slate-500 dark:text-slate-400 whitespace-nowrap">
-                            {t.purchaseDate ? formatDateBR(t.purchaseDate) : '-'}
+                          <td className="py-3 px-3 font-bold text-slate-800 dark:text-slate-100 whitespace-nowrap">
+                            {formatDateBR(t.date)}
                           </td>
 
                           <td className="py-3 px-3 font-semibold text-slate-900 dark:text-slate-100">

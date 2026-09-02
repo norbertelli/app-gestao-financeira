@@ -31,6 +31,7 @@ import {
   BankTransaction,
   CreditCard,
   CardTransaction,
+  Debt,
   Investment,
   InvestmentTransaction,
   FuturePayment,
@@ -385,6 +386,43 @@ export const deleteCardTransactionDoc = async (userId: string, txId: string) => 
   }
 };
 
+// Debts & Loans / Dívidas e Empréstimos
+export const subscribeDebts = (
+  userId: string,
+  onData: (debts: Debt[]) => void
+) => {
+  const colRef = collection(db, 'users', userId, 'debts');
+  return onSnapshot(
+    colRef,
+    (snapshot) => {
+      const list: Debt[] = [];
+      snapshot.forEach((d) => list.push(d.data() as Debt));
+      onData(list);
+    },
+    (error) => {
+      handleFirestoreError(error, OperationType.LIST, `users/${userId}/debts`);
+    }
+  );
+};
+
+export const saveDebtDoc = async (userId: string, debt: Debt) => {
+  const docRef = doc(db, 'users', userId, 'debts', debt.id);
+  try {
+    await setDoc(docRef, { ...debt, updatedAt: new Date().toISOString() });
+  } catch (error) {
+    handleFirestoreError(error, OperationType.WRITE, `users/${userId}/debts/${debt.id}`);
+  }
+};
+
+export const deleteDebtDoc = async (userId: string, debtId: string) => {
+  const docRef = doc(db, 'users', userId, 'debts', debtId);
+  try {
+    await deleteDoc(docRef);
+  } catch (error) {
+    handleFirestoreError(error, OperationType.DELETE, `users/${userId}/debts/${debtId}`);
+  }
+};
+
 // Investments
 export const subscribeInvestments = (
   userId: string,
@@ -643,6 +681,7 @@ export const seedInitialUserData = async (
     categories: CategoryItem[];
     notificationSettings: NotificationSettings;
     notificationLogs: NotificationLog[];
+    debts?: Debt[];
   }
 ) => {
   try {
@@ -663,6 +702,12 @@ export const seedInitialUserData = async (
     initialData.cardTransactions.forEach((tx) => {
       batch.set(doc(db, 'users', userId, 'cardTransactions', tx.id), tx);
     });
+
+    if (initialData.debts) {
+      initialData.debts.forEach((debt) => {
+        batch.set(doc(db, 'users', userId, 'debts', debt.id), debt);
+      });
+    }
 
     initialData.investments.forEach((inv) => {
       batch.set(doc(db, 'users', userId, 'investments', inv.id), inv);
@@ -723,6 +768,7 @@ export const checkAndSeedUserData = async (
     categories: CategoryItem[];
     notificationSettings: NotificationSettings;
     notificationLogs: NotificationLog[];
+    debts?: Debt[];
   }
 ) => {
   try {

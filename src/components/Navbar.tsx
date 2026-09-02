@@ -3,6 +3,7 @@ import { ActiveTab } from '../types';
 import {
   LayoutDashboard,
   Building2,
+  Landmark,
   CreditCard,
   TrendingUp,
   FileText,
@@ -68,6 +69,7 @@ export const Navbar: React.FC<NavbarProps> = ({
     { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
     { id: 'accounts', label: 'Contas Bancárias', icon: Building2 },
     { id: 'cards', label: 'Cartões de Crédito', icon: CreditCard },
+    { id: 'debts', label: 'Dívidas & Empréstimos', icon: Landmark },
     { id: 'future-payments', label: 'Futuras Transações', icon: CalendarClock },
     { id: 'investments', label: 'Investimentos', icon: TrendingUp },
     { id: 'notifications', label: 'Lembretes & Alertas', icon: BellRing, badge: urgentBillsCount },
