@@ -14,6 +14,7 @@ import {
   NotificationSettings,
   NotificationLog,
   Debt,
+  AuditLogItem,
 } from './types';
 import {
   INITIAL_BANK_ACCOUNTS,
@@ -29,6 +30,7 @@ import {
   INITIAL_NOTIFICATION_LOGS,
   INITIAL_DEBTS,
 } from './data/initialData';
+import { RotateCcw } from 'lucide-react';
 import { calculateTotalNetWorth } from './utils/financeUtils';
 import { getUpcomingBillsAlerts } from './services/reminderService';
 import { Navbar } from './components/Navbar';
@@ -42,6 +44,7 @@ import { SmartReaderView } from './components/SmartReaderView';
 import { OpenFinanceView } from './components/OpenFinanceView';
 import { CategoriesView } from './components/CategoriesView';
 import { NotificationSettingsView } from './components/NotificationSettingsView';
+import { SecurityAuditView } from './components/SecurityAuditView';
 import { StatementAuditModal } from './components/StatementAuditModal';
 import { MultiUserSyncModal } from './components/MultiUserSyncModal';
 import { CloudSyncBanner } from './components/CloudSyncBanner';
@@ -82,6 +85,7 @@ import {
   saveNotificationSettingsDoc,
   subscribeNotificationLogs,
   saveNotificationLogDoc,
+  subscribeAuditLogs,
   seedInitialUserData,
   checkAndSeedUserData,
 } from './services/firebase';
@@ -150,8 +154,11 @@ export default function App() {
     return saved ? JSON.parse(saved) : INITIAL_NOTIFICATION_LOGS;
   });
 
+  const [auditLogs, setAuditLogs] = useState<AuditLogItem[]>([]);
+
   const [activeTab, setActiveTab] = useState<ActiveTab>('dashboard');
   const [isSyncModalOpen, setIsSyncModalOpen] = useState(false);
+  const [isResetConfirmOpen, setIsResetConfirmOpen] = useState(false);
 
   // Statement Audit Modal state
   const [auditModal, setAuditModal] = useState<{
@@ -234,6 +241,10 @@ export default function App() {
       setNotificationLogs(data);
     });
 
+    const unsubAudit = subscribeAuditLogs(user.uid, (data) => {
+      setAuditLogs(data);
+    });
+
     return () => {
       unsubAccounts();
       unsubBankTxs();
@@ -247,6 +258,7 @@ export default function App() {
       unsubCats();
       unsubSettings();
       unsubLogs();
+      unsubAudit();
     };
   }, [user]);
 
@@ -753,39 +765,77 @@ export default function App() {
   };
 
   // Reset Data to Defaults
-  const handleResetData = () => {
-    if (window.confirm('Deseja restaurar todos os dados para os valores de exemplo iniciais?')) {
-      if (user) {
-        seedInitialUserData(user.uid, {
-          accounts: INITIAL_BANK_ACCOUNTS,
-          bankTransactions: INITIAL_BANK_TRANSACTIONS,
-          cards: INITIAL_CREDIT_CARDS,
-          cardTransactions: INITIAL_CARD_TRANSACTIONS,
-          debts: INITIAL_DEBTS,
-          investments: INITIAL_INVESTMENTS,
-          investmentTransactions: INITIAL_INVESTMENT_TRANSACTIONS,
-          futurePayments: INITIAL_FUTURE_PAYMENTS,
-          openFinanceConnections: INITIAL_OPEN_FINANCE_CONNECTIONS,
-          categories: INITIAL_CATEGORIES,
-          notificationSettings: INITIAL_NOTIFICATION_SETTINGS,
-          notificationLogs: INITIAL_NOTIFICATION_LOGS,
-        });
-      } else {
-        setAccounts(INITIAL_BANK_ACCOUNTS);
-        setBankTransactions(INITIAL_BANK_TRANSACTIONS);
-        setCards(INITIAL_CREDIT_CARDS);
-        setCardTransactions(INITIAL_CARD_TRANSACTIONS);
-        setDebts(INITIAL_DEBTS);
-        setInvestments(INITIAL_INVESTMENTS);
-        setInvestmentTransactions(INITIAL_INVESTMENT_TRANSACTIONS);
-        setFuturePayments(INITIAL_FUTURE_PAYMENTS);
-        setOpenFinanceConnections(INITIAL_OPEN_FINANCE_CONNECTIONS);
-        setCategories(INITIAL_CATEGORIES);
-        setNotificationSettings(INITIAL_NOTIFICATION_SETTINGS);
-        setNotificationLogs(INITIAL_NOTIFICATION_LOGS);
-        localStorage.clear();
-      }
+  const handleConfirmReset = () => {
+    setIsResetConfirmOpen(false);
+    if (user) {
+      seedInitialUserData(user.uid, {
+        accounts: INITIAL_BANK_ACCOUNTS,
+        bankTransactions: INITIAL_BANK_TRANSACTIONS,
+        cards: INITIAL_CREDIT_CARDS,
+        cardTransactions: INITIAL_CARD_TRANSACTIONS,
+        debts: INITIAL_DEBTS,
+        investments: INITIAL_INVESTMENTS,
+        investmentTransactions: INITIAL_INVESTMENT_TRANSACTIONS,
+        futurePayments: INITIAL_FUTURE_PAYMENTS,
+        openFinanceConnections: INITIAL_OPEN_FINANCE_CONNECTIONS,
+        categories: INITIAL_CATEGORIES,
+        notificationSettings: INITIAL_NOTIFICATION_SETTINGS,
+        notificationLogs: INITIAL_NOTIFICATION_LOGS,
+      });
+    } else {
+      setAccounts(INITIAL_BANK_ACCOUNTS);
+      setBankTransactions(INITIAL_BANK_TRANSACTIONS);
+      setCards(INITIAL_CREDIT_CARDS);
+      setCardTransactions(INITIAL_CARD_TRANSACTIONS);
+      setDebts(INITIAL_DEBTS);
+      setInvestments(INITIAL_INVESTMENTS);
+      setInvestmentTransactions(INITIAL_INVESTMENT_TRANSACTIONS);
+      setFuturePayments(INITIAL_FUTURE_PAYMENTS);
+      setOpenFinanceConnections(INITIAL_OPEN_FINANCE_CONNECTIONS);
+      setCategories(INITIAL_CATEGORIES);
+      setNotificationSettings(INITIAL_NOTIFICATION_SETTINGS);
+      setNotificationLogs(INITIAL_NOTIFICATION_LOGS);
+      localStorage.clear();
     }
+  };
+
+  // Massive stress testing handlers
+  const handleAddMassiveTransactions = (newTxs: BankTransaction[]) => {
+    setBankTransactions((prev) => {
+      const updated = [...newTxs, ...prev];
+      if (!user) {
+        try {
+          localStorage.setItem('finflow_bank_txs', JSON.stringify(updated));
+        } catch (e) {
+          console.warn('LocalStorage limit in stress test:', e);
+        }
+      }
+      return updated;
+    });
+  };
+
+  const handleClearMassiveTransactions = () => {
+    setBankTransactions((prev) => {
+      const updated = prev.filter((t: any) => {
+        const id = t.id || '';
+        const desc = t.description || '';
+        const notes = t.notes || '';
+        const isStress =
+          id.startsWith('stress_tx_') ||
+          t.isStressTest === true ||
+          desc.includes('[TESTE-MASSIVO]') ||
+          desc.includes('Operação Carga') ||
+          desc.includes('[STRESS-TEST]') ||
+          notes.includes('[STRESS-TEST]');
+        return !isStress;
+      });
+      try {
+        localStorage.setItem('finflow_bank_txs', JSON.stringify(updated));
+      } catch (e) {
+        console.warn('LocalStorage error during stress test clear:', e);
+      }
+      return updated;
+    });
   };
 
   // Modal Opener for Statement Auditing
@@ -819,7 +869,7 @@ export default function App() {
         activeTab={activeTab}
         setActiveTab={setActiveTab}
         onOpenSmartReader={() => setActiveTab('smart-reader')}
-        onResetData={handleResetData}
+        onResetData={() => setIsResetConfirmOpen(true)}
         onOpenSyncModal={() => setIsSyncModalOpen(true)}
         netWorth={netWorth}
         urgentBillsCount={urgentBillsAlerts.length}
@@ -953,6 +1003,19 @@ export default function App() {
           />
         )}
 
+        {activeTab === 'security' && (
+          <SecurityAuditView
+            accounts={accounts}
+            bankTransactions={bankTransactions}
+            cards={cards}
+            cardTransactions={cardTransactions}
+            debts={debts}
+            onAddMassiveTransactions={handleAddMassiveTransactions}
+            onClearMassiveTransactions={handleClearMassiveTransactions}
+            auditLogs={auditLogs}
+          />
+        )}
+
         {(activeTab === 'categories' || activeTab === 'settings') && (
           <CategoriesView
             categories={categories}
@@ -996,6 +1059,39 @@ export default function App() {
           futurePayments: futurePayments.length,
         }}
       />
+
+      {/* Confirmation Modal for Resetting to Defaults */}
+      {isResetConfirmOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-xs animate-in fade-in duration-150">
+          <div className="bg-slate-900 border border-slate-800 rounded-3xl p-6 max-w-sm w-full shadow-2xl text-center space-y-4">
+            <div className="w-12 h-12 rounded-2xl bg-amber-500/20 text-amber-400 flex items-center justify-center mx-auto border border-amber-500/30">
+              <RotateCcw className="w-6 h-6" />
+            </div>
+            <div>
+              <h3 className="text-base font-bold text-white">Restaurar Dados Iniciais?</h3>
+              <p className="text-xs text-slate-400 mt-1 leading-relaxed">
+                Isso restaurará todas as contas, cartões e transações para os exemplos de fábrica.
+              </p>
+            </div>
+            <div className="grid grid-cols-2 gap-2 pt-2">
+              <button
+                type="button"
+                onClick={handleConfirmReset}
+                className="py-2.5 px-4 bg-amber-600 hover:bg-amber-500 active:bg-amber-700 text-white rounded-xl text-xs font-bold transition-all shadow-md cursor-pointer"
+              >
+                Sim, Restaurar
+              </button>
+              <button
+                type="button"
+                onClick={() => setIsResetConfirmOpen(false)}
+                className="py-2.5 px-4 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl text-xs font-semibold transition-all cursor-pointer"
+              >
+                Cancelar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

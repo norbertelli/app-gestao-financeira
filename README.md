@@ -49,7 +49,22 @@ Sistema completo para controle e gestão financeira pessoal e empresarial, com s
 - **Exportação para PDF**: Documento formatado pronto para impressão ou envio.
 - **Exportação para Excel (.xlsx) e CSV**: Planilhas detalhadas para auditoria e conciliação externa.
 
-### 7. ☁️ Nuvem & Multi-dispositivo (Firebase Firestore)
+### 7. 🛡️ Central de Auditoria, Segurança & Testes Massivos (Novo)
+- **Testes Massivos & Benchmark de Carga (Stress Testing)**:
+  - Disparo de testes controlados com injeção sintética de 50, 100, 200, 500, 1.000 ou 2.000 transações em lote (`writeBatch`).
+  - Métricas de telemetria em tempo real: tempo de execução (ms), taxa de vazão (operações/segundo) e integridade atômica.
+  - Modo Nuvem (Firestore) ou Memória local.
+  - **Expurgo Rápido em 1-Clique**: Limpeza total dos registros sintéticos sem afetar as transações reais do usuário.
+- **Trilha de Auditoria (Audit Trail)**:
+  - Registro cronológico imutável de eventos sensíveis (autenticação de admin, movimentações, conciliação e carga).
+  - Filtros por categoria (`AUTH`, `TRANSACTION`, `ACCOUNT`, `DEBT`, `SECURITY`, `STRESS_TEST`) e nível de severidade.
+- **Scanner de Segurança & Conformidade Contábil**:
+  - Varredura de reconciliação matemática de contas bancárias (Saldo Inicial + Créditos - Débitos).
+  - Validação de limites de cartões e consistência de amortização de dívidas.
+  - Verificação de isolamento criptográfico multi-tenant.
+  - Exportação de laudo de auditoria em formato JSON.
+
+### 8. ☁️ Nuvem & Multi-dispositivo (Firebase Firestore)
 - Sincronização segura em tempo real para acesso simultâneo em múltiplos navegadores, smartphones e tablets.
 
 ---

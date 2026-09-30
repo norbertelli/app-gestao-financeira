@@ -11,6 +11,7 @@ import {
   saveUserProfile,
   testConnection,
 } from '../services/firebase';
+import { recordAuditEvent } from '../services/auditLogger';
 
 interface AuthContextType {
   user: User | null;
@@ -128,6 +129,13 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       if (adminUser) {
         setIsAdmin(true);
         await saveUserProfile(adminUser, 'admin');
+        await recordAuditEvent(
+          'ADMIN_LOGIN_SUCCESS',
+          'AUTH',
+          'INFO',
+          'Administrador autenticado com credenciais master no sistema.',
+          adminUser
+        );
       }
     } catch (err) {
       console.error('Failed to log in as admin:', err);
@@ -140,6 +148,13 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const logout = async () => {
     setLoading(true);
     try {
+      await recordAuditEvent(
+        'USER_LOGOUT',
+        'AUTH',
+        'INFO',
+        `Sessão encerrada com sucesso para ${user?.email || 'usuário atual'}.`,
+        user
+      );
       localStorage.removeItem('finflow_admin_mode');
       await logoutUser();
       setIsAdmin(false);

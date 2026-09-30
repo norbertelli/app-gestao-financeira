@@ -219,6 +219,30 @@ export interface CategoryItem {
   isSystem?: boolean;
 }
 
+export interface AuditLogItem {
+  id: string;
+  timestamp: string; // ISO string
+  userId?: string;
+  userEmail?: string;
+  action: string;
+  category: 'AUTH' | 'TRANSACTION' | 'ACCOUNT' | 'DEBT' | 'SECURITY' | 'STRESS_TEST' | 'SYSTEM';
+  severity: 'INFO' | 'WARNING' | 'CRITICAL';
+  details: string;
+  ipAddress?: string;
+  metadata?: Record<string, any>;
+}
+
+export interface StressTestMetrics {
+  totalItems: number;
+  batchCount: number;
+  durationMs: number;
+  throughputOpsSec: number;
+  successCount: number;
+  errorCount: number;
+  timestamp: string;
+  targetEntity: 'bank_transactions' | 'card_transactions' | 'debts' | 'all';
+}
+
 export type ActiveTab =
   | 'dashboard'
   | 'accounts'
@@ -230,4 +254,5 @@ export type ActiveTab =
   | 'open-finance'
   | 'notifications'
   | 'categories'
-  | 'settings';
+  | 'settings'
+  | 'security';

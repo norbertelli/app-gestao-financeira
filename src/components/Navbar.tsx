@@ -73,6 +73,7 @@ export const Navbar: React.FC<NavbarProps> = ({
     { id: 'future-payments', label: 'Futuras Transações', icon: CalendarClock },
     { id: 'investments', label: 'Investimentos', icon: TrendingUp },
     { id: 'notifications', label: 'Lembretes & Alertas', icon: BellRing, badge: urgentBillsCount },
+    { id: 'security', label: 'Auditoria & Segurança', icon: ShieldAlert },
     { id: 'smart-reader', label: 'Leitor Inteligente', icon: FileText },
     { id: 'open-finance', label: 'Open Finance', icon: ShieldCheck },
   ];
@@ -253,6 +254,24 @@ export const Navbar: React.FC<NavbarProps> = ({
                         <span>Categorias</span>
                       </div>
                       {activeTab === 'categories' && <Check className="w-4 h-4 text-white" />}
+                    </button>
+
+                    <button
+                      onClick={() => {
+                        setActiveTab('security');
+                        setShowSettingsMenu(false);
+                      }}
+                      className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-semibold transition-colors ${
+                        activeTab === 'security'
+                          ? 'bg-indigo-600 text-white font-bold'
+                          : 'hover:bg-slate-700/80 text-slate-200'
+                      }`}
+                    >
+                      <div className="flex items-center gap-2.5">
+                        <ShieldAlert className="w-4 h-4 text-emerald-400" />
+                        <span>Auditoria & Segurança</span>
+                      </div>
+                      {activeTab === 'security' && <Check className="w-4 h-4 text-white" />}
                     </button>
 
                     {/* Logout Option */}

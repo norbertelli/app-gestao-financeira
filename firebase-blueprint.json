@@ -248,6 +248,23 @@
         "updatedAt": { "type": "string", "maxLength": 64 }
       },
       "required": ["id", "creditor", "loanAmount", "dueDate", "totalInstallments", "installmentAmount"]
+    },
+    "AuditLogItem": {
+      "title": "AuditLogItem",
+      "description": "User audit trail and security event logs",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128 },
+        "timestamp": { "type": "string", "maxLength": 64 },
+        "userId": { "type": "string", "maxLength": 128 },
+        "userEmail": { "type": "string", "maxLength": 256 },
+        "action": { "type": "string", "maxLength": 128 },
+        "category": { "type": "string", "maxLength": 64 },
+        "severity": { "type": "string", "maxLength": 32 },
+        "details": { "type": "string", "maxLength": 2048 },
+        "ipAddress": { "type": "string", "maxLength": 128 }
+      },
+      "required": ["id", "timestamp", "action", "category", "severity", "details"]
     }
   },
   "firestore": {
@@ -302,6 +319,10 @@
     "/users/{userId}/notificationLogs/{logId}": {
       "schema": "NotificationLog",
       "description": "User notification and alert audit logs"
+    },
+    "/users/{userId}/auditLogs/{logId}": {
+      "schema": "AuditLogItem",
+      "description": "User audit trail and security event logs"
     }
   }
 }

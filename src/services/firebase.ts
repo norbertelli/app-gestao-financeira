@@ -39,6 +39,7 @@ import {
   CategoryItem,
   NotificationSettings,
   NotificationLog,
+  AuditLogItem,
 } from '../types';
 
 // Initialize Firebase
@@ -793,3 +794,147 @@ export const checkAndSeedUserData = async (
     return false;
   }
 };
+
+// ==========================================
+// Audit Logs & Security
+// ==========================================
+
+export const subscribeAuditLogs = (
+  userId: string,
+  onData: (logs: AuditLogItem[]) => void
+) => {
+  const colRef = collection(db, 'users', userId, 'auditLogs');
+  return onSnapshot(
+    colRef,
+    (snapshot) => {
+      const list: AuditLogItem[] = [];
+      snapshot.forEach((d) => list.push(d.data() as AuditLogItem));
+      // Sort newest first
+      list.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+      onData(list);
+    },
+    (error) => {
+      handleFirestoreError(error, OperationType.LIST, `users/${userId}/auditLogs`);
+    }
+  );
+};
+
+export const saveAuditLogDoc = async (userId: string, logItem: AuditLogItem) => {
+  const docRef = doc(db, 'users', userId, 'auditLogs', logItem.id);
+  try {
+    const sanitized: Record<string, any> = {};
+    for (const [key, value] of Object.entries(logItem)) {
+      if (value !== undefined) {
+        sanitized[key] = value;
+      }
+    }
+    await setDoc(docRef, sanitized);
+  } catch (error) {
+    handleFirestoreError(error, OperationType.WRITE, `users/${userId}/auditLogs/${logItem.id}`);
+  }
+};
+
+// ==========================================
+// Massive Data / Stress Testing Functions
+// ==========================================
+
+/**
+ * Inserts a batch of synthetic stress test transactions into Firestore using chunks of writeBatch (max 450 items per batch)
+ */
+export const insertMassiveStressData = async (
+  userId: string,
+  transactions: BankTransaction[],
+  onProgress?: (progressPercent: number) => void
+): Promise<{ success: boolean; durationMs: number; count: number }> => {
+  const startTime = performance.now();
+  const CHUNK_SIZE = 400; // Firebase max batch is 500
+  const chunks: BankTransaction[][] = [];
+
+  for (let i = 0; i < transactions.length; i += CHUNK_SIZE) {
+    chunks.push(transactions.slice(i, i + CHUNK_SIZE));
+  }
+
+  try {
+    for (let c = 0; c < chunks.length; c++) {
+      const chunk = chunks[c];
+      const batch = writeBatch(db);
+      for (const tx of chunk) {
+        const txRef = doc(db, 'users', userId, 'bankTransactions', tx.id);
+        batch.set(txRef, { ...tx, updatedAt: new Date().toISOString() });
+      }
+      await batch.commit();
+
+      if (onProgress) {
+        const pct = Math.round(((c + 1) / chunks.length) * 100);
+        onProgress(pct);
+      }
+    }
+
+    const durationMs = Math.round(performance.now() - startTime);
+    return { success: true, durationMs, count: transactions.length };
+  } catch (error) {
+    console.error('Error in massive stress data insertion:', error);
+    handleFirestoreError(error, OperationType.WRITE, `users/${userId}/bankTransactions/stress-batch`);
+    return { success: false, durationMs: Math.round(performance.now() - startTime), count: 0 };
+  }
+};
+
+/**
+ * Clears only the stress test transactions from Firestore (items marked with isStressTest or [TESTE-MASSIVO])
+ */
+export const clearStressTestDataFromFirestore = async (
+  userId: string,
+  onProgress?: (progressPercent: number) => void
+): Promise<number> => {
+  try {
+    const colRef = collection(db, 'users', userId, 'bankTransactions');
+    const snap = await getDocs(colRef);
+    const stressDocs: string[] = [];
+
+    snap.forEach((docItem) => {
+      const data = docItem.data();
+      const id = docItem.id || '';
+      const desc = data.description || '';
+      const notes = data.notes || '';
+
+      if (
+        id.startsWith('stress_tx_') ||
+        data.isStressTest === true ||
+        desc.includes('[TESTE-MASSIVO]') ||
+        desc.includes('Operação Carga') ||
+        desc.includes('[STRESS-TEST]') ||
+        notes.includes('[STRESS-TEST]')
+      ) {
+        stressDocs.push(docItem.id);
+      }
+    });
+
+    if (stressDocs.length === 0) return 0;
+
+    const CHUNK_SIZE = 400;
+    const chunks: string[][] = [];
+    for (let i = 0; i < stressDocs.length; i += CHUNK_SIZE) {
+      chunks.push(stressDocs.slice(i, i + CHUNK_SIZE));
+    }
+
+    for (let c = 0; c < chunks.length; c++) {
+      const chunk = chunks[c];
+      const batch = writeBatch(db);
+      for (const id of chunk) {
+        batch.delete(doc(db, 'users', userId, 'bankTransactions', id));
+      }
+      await batch.commit();
+
+      if (onProgress) {
+        const pct = Math.round(((c + 1) / chunks.length) * 100);
+        onProgress(pct);
+      }
+    }
+
+    return stressDocs.length;
+  } catch (error) {
+    console.error('Error clearing stress test data from Firestore:', error);
+    throw error;
+  }
+};
+
