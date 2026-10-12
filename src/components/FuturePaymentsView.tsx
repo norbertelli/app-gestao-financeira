@@ -94,7 +94,7 @@ const AddFuturePaymentModal: React.FC<AddFuturePaymentModalProps> = ({ isOpen, c
         <div>
           <h3 className="text-xl font-bold text-slate-900 dark:text-slate-100 flex items-center gap-2">
             <CalendarClock className="w-5 h-5 text-amber-500 dark:text-amber-400" />
-            <span>Incluir Futuro Lançamento</span>
+            <span>Incluir Conta à Pagar/Receber</span>
           </h3>
           <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
             Cadastre contas a pagar (despesas/boletos) ou contas a receber na previsão de vencimentos.
@@ -232,7 +232,7 @@ const AddFuturePaymentModal: React.FC<AddFuturePaymentModalProps> = ({ isOpen, c
                   : 'bg-amber-500 hover:bg-amber-600 text-slate-950 font-black'
               }`}
             >
-              Salvar Lançamento
+              Salvar Conta
             </button>
           </div>
         </form>
@@ -299,7 +299,7 @@ const EditFuturePaymentModal: React.FC<EditFuturePaymentModalProps> = ({ payment
         <div>
           <h3 className="text-xl font-bold text-slate-900 dark:text-slate-100 flex items-center gap-2">
             <Edit3 className="w-5 h-5 text-indigo-600 dark:text-indigo-400" />
-            <span>Alterar Compromisso Futuro</span>
+            <span>Alterar Conta à Pagar/Receber</span>
           </h3>
           <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
             Edite as informações da conta antes de liquidar.
@@ -727,7 +727,7 @@ export const FuturePaymentsView: React.FC<FuturePaymentsViewProps> = ({
         <div>
           <h1 className="text-2xl font-extrabold text-slate-900 dark:text-slate-100 flex items-center gap-2">
             <CalendarClock className="w-7 h-7 text-amber-500 dark:text-amber-400" />
-            <span>Futuros Pagamentos (Contas a Pagar & Receber)</span>
+            <span>Contas à Pagar/Receber</span>
           </h1>
           <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
             Projete compromissos futuros. Ao dar baixa, contas a pagar debitam (-R$) e contas a receber creditam (+R$) no extrato bancário.
@@ -809,7 +809,7 @@ export const FuturePaymentsView: React.FC<FuturePaymentsViewProps> = ({
         <div className="p-6 border-b border-slate-200 dark:border-slate-800 flex flex-col md:flex-row md:items-center justify-between gap-4">
           <h2 className="text-lg font-bold text-slate-900 dark:text-slate-100 flex items-center gap-2">
             <Receipt className="w-5 h-5 text-amber-500" />
-            <span>Tabela de Compromissos Futuros a Pagar ou Receber</span>
+            <span>Tabela de Contas à Pagar/Receber</span>
           </h2>
           <div className="flex flex-wrap items-center gap-2">
             <span className="text-xs font-semibold px-2.5 py-1 rounded-full bg-rose-50 text-rose-800 dark:bg-rose-950 dark:text-rose-300 border border-rose-200/60">

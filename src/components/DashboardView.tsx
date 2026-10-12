@@ -749,13 +749,13 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         </div>
       </div>
 
-      {/* SEÇÃO DE FUTUROS PAGAMENTOS (CONTAS A PAGAR) */}
+      {/* SEÇÃO DE CONTAS À PAGAR/RECEBER */}
       <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-2xs overflow-hidden">
         <div className="p-5 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between flex-wrap gap-2">
           <div>
             <h2 className="text-lg font-bold text-slate-900 dark:text-slate-100 flex items-center gap-2">
               <CalendarClock className="w-5 h-5 text-amber-500" />
-              <span>Próximos Pagamentos Futuros (Contas a Pagar)</span>
+              <span>Contas à Pagar/Receber</span>
             </h2>
             <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
               Boletos e compromissos pendentes. Ao alterar para pago, o débito é gerado no extrato do banco.
@@ -767,7 +767,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               onClick={() => onNavigateTab('future-payments')}
               className="text-xs font-semibold text-amber-600 hover:text-amber-700 dark:text-amber-400 inline-flex items-center gap-1"
             >
-              <span>Gerenciar Contas a Pagar</span>
+              <span>Gerenciar Contas à Pagar/Receber</span>
               <ChevronRight className="w-4 h-4" />
             </button>
           )}

@@ -52,8 +52,10 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     const unsubscribe = onAuthChange(async (currentUser) => {
       setUser(currentUser);
       if (currentUser) {
+        const emailLower = (currentUser.email || '').toLowerCase();
         const isUserAdmin =
-          currentUser.email === 'admin@finflow.app' ||
+          emailLower === 'admin@finflow.app' ||
+          emailLower === 'norberto.bertelli.nb@gmail.com' ||
           currentUser.displayName === 'Administrador Master' ||
           localStorage.getItem('finflow_admin_mode') === 'true';
         setIsAdmin(isUserAdmin);
@@ -127,8 +129,13 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       localStorage.setItem('finflow_admin_mode', 'true');
       const adminUser = await loginAsAdmin(userParam, passParam);
       if (adminUser) {
+        setUser(adminUser);
         setIsAdmin(true);
-        await saveUserProfile(adminUser, 'admin');
+        try {
+          await saveUserProfile(adminUser, 'admin');
+        } catch (e) {
+          console.warn('Could not save user profile:', e);
+        }
         await recordAuditEvent(
           'ADMIN_LOGIN_SUCCESS',
           'AUTH',

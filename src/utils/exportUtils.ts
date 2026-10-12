@@ -327,7 +327,7 @@ export const exportFuturePaymentsToPDF = (options: FuturePaymentsExportOptions) 
   doc.setTextColor(15, 23, 42); // dark slate
   doc.setFontSize(14);
   doc.setFont('helvetica', 'bold');
-  doc.text('FinFlow - Relatório de Futuros Pagamentos', 14, 11);
+  doc.text('FinFlow - Relatório de Contas à Pagar/Receber', 14, 11);
 
   doc.setFontSize(9.5);
   doc.setFont('helvetica', 'normal');
@@ -496,7 +496,7 @@ export const exportFuturePaymentsToExcel = (
 
   const rows: any[] = [
     ['FINFLOW - GESTÃO FINANCEIRA & OPEN FINANCE'],
-    ['RELATÓRIO DE FUTUROS PAGAMENTOS & CONTAS A PAGAR'],
+    ['RELATÓRIO DE CONTAS À PAGAR/RECEBER'],
     ['Gerado em:', nowStr],
     ['Filtro Status:', filters.status || 'Todos', 'Filtro Categoria:', filters.category || 'Todas', 'Busca:', filters.searchTerm || 'Nenhuma'],
     [],

@@ -70,7 +70,7 @@ export const Navbar: React.FC<NavbarProps> = ({
     { id: 'accounts', label: 'Contas Bancárias', icon: Building2 },
     { id: 'cards', label: 'Cartões de Crédito', icon: CreditCard },
     { id: 'debts', label: 'Dívidas & Empréstimos', icon: Landmark },
-    { id: 'future-payments', label: 'Futuras Transações', icon: CalendarClock },
+    { id: 'future-payments', label: 'Contas à Pagar/Receber', icon: CalendarClock },
     { id: 'investments', label: 'Investimentos', icon: TrendingUp },
     { id: 'notifications', label: 'Lembretes & Alertas', icon: BellRing, badge: urgentBillsCount },
     { id: 'security', label: 'Auditoria & Segurança', icon: ShieldAlert },
