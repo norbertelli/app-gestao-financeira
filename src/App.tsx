@@ -49,6 +49,7 @@ import { StatementAuditModal } from './components/StatementAuditModal';
 import { MultiUserSyncModal } from './components/MultiUserSyncModal';
 import { CloudSyncBanner } from './components/CloudSyncBanner';
 import { AuthView } from './components/AuthView';
+import { FloatingWhatsAppSupport } from './components/WhatsAppSupport';
 import { useAuth } from './context/AuthContext';
 import {
   subscribeBankAccounts,
@@ -1092,6 +1093,9 @@ export default function App() {
           </div>
         </div>
       )}
+
+      {/* Floating WhatsApp Support Button with phone (11) 93205-873 */}
+      <FloatingWhatsAppSupport />
     </div>
   );
 }

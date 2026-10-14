@@ -57,6 +57,8 @@ import {
   PieChart,
   Pie,
 } from 'recharts';
+import { WhatsAppSupportButton } from './WhatsAppSupport';
+
 
 interface DashboardViewProps {
   accounts: BankAccount[];
@@ -213,11 +215,11 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             </p>
           </div>
 
-          <div className="flex items-center gap-3">
+          <div className="flex flex-wrap items-center gap-2.5 sm:gap-3">
             {urgentPayments.length > 0 && (
               <button
                 onClick={() => setShowUrgentModal(true)}
-                className="relative inline-flex items-center gap-2 px-4 py-3 bg-amber-500/20 hover:bg-amber-500/30 text-amber-200 border border-amber-400/40 rounded-xl text-sm font-bold transition-all shadow-md animate-pulse"
+                className="relative inline-flex items-center gap-2 px-3.5 py-2.5 sm:px-4 sm:py-3 bg-amber-500/20 hover:bg-amber-500/30 text-amber-200 border border-amber-400/40 rounded-xl text-xs sm:text-sm font-bold transition-all shadow-md animate-pulse cursor-pointer"
                 title="Avisos de Vencimento"
               >
                 <Bell className="w-4 h-4 text-amber-300" />
@@ -228,9 +230,12 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               </button>
             )}
 
+            {/* Botão de Suporte ou Ajuda no WhatsApp */}
+            <WhatsAppSupportButton variant="banner" label="Suporte ou Ajuda" />
+
             <button
               onClick={onOpenSmartReader}
-              className="inline-flex items-center gap-2 px-5 py-3 bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 text-slate-950 font-extrabold rounded-xl text-sm shadow-lg shadow-emerald-900/30 transition-all hover:scale-105 active:scale-95"
+              className="inline-flex items-center gap-2 px-4 py-2.5 sm:px-5 sm:py-3 bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 text-slate-950 font-extrabold rounded-xl text-xs sm:text-sm shadow-lg shadow-emerald-900/30 transition-all hover:scale-105 active:scale-95 cursor-pointer"
             >
               <Sparkles className="w-4 h-4 fill-slate-950" />
               <span>Importar Extrato Copiado</span>
@@ -1049,6 +1054,9 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           </table>
         </div>
       </div>
+
+      {/* Card de Atendimento e Ajuda via WhatsApp */}
+      <WhatsAppSupportButton variant="card" />
 
       {/* URGENT PAYMENTS NOTIFICATION MODAL */}
       {showUrgentModal && (

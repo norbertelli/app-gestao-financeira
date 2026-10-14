@@ -25,6 +25,7 @@ import {
   Shield,
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
+import { WhatsAppIcon, getWhatsAppUrl, SUPPORT_PHONE_DISPLAY } from './WhatsAppSupport';
 
 interface NavbarProps {
   activeTab: ActiveTab;
@@ -273,6 +274,24 @@ export const Navbar: React.FC<NavbarProps> = ({
                       </div>
                       {activeTab === 'security' && <Check className="w-4 h-4 text-white" />}
                     </button>
+
+                    {/* Suporte WhatsApp */}
+                    <a
+                      href={getWhatsAppUrl()}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      onClick={() => setShowSettingsMenu(false)}
+                      className="w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-bold text-emerald-400 bg-emerald-950/20 hover:bg-emerald-950/50 border border-emerald-500/30 transition-colors"
+                      title={`Falar com Suporte no WhatsApp: ${SUPPORT_PHONE_DISPLAY}`}
+                    >
+                      <div className="flex items-center gap-2.5">
+                        <WhatsAppIcon className="w-4 h-4 text-emerald-400" />
+                        <span>Suporte / Ajuda</span>
+                      </div>
+                      <span className="text-[10px] text-emerald-300 font-extrabold bg-emerald-500/20 px-1.5 py-0.5 rounded">
+                        {SUPPORT_PHONE_DISPLAY}
+                      </span>
+                    </a>
 
                     {/* Logout Option */}
                     <div className="pt-1.5 border-t border-slate-700/60 mt-1">
