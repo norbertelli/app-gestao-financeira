@@ -323,6 +323,10 @@
     "/users/{userId}/auditLogs/{logId}": {
       "schema": "AuditLogItem",
       "description": "User audit trail and security event logs"
+    },
+    "/users/{userId}/subscriptions/{subId}": {
+      "schema": "UserProfile",
+      "description": "User subscriptions and payment records"
     }
   }
 }

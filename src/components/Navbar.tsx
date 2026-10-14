@@ -23,9 +23,13 @@ import {
   User as UserIcon,
   LogOut,
   Shield,
+  Crown,
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
-import { WhatsAppIcon, getWhatsAppUrl, SUPPORT_PHONE_DISPLAY } from './WhatsAppSupport';
+import { useSubscription } from '../context/SubscriptionContext';
+import { WhatsAppIcon, getWhatsAppUrl } from './WhatsAppSupport';
+
+
 
 interface NavbarProps {
   activeTab: ActiveTab;
@@ -47,6 +51,7 @@ export const Navbar: React.FC<NavbarProps> = ({
   urgentBillsCount = 0,
 }) => {
   const { user, isCloudSynced, isAdmin, logout } = useAuth();
+  const { isPro, currentPlan } = useSubscription();
   const [showSettingsMenu, setShowSettingsMenu] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
 
@@ -74,6 +79,7 @@ export const Navbar: React.FC<NavbarProps> = ({
     { id: 'future-payments', label: 'Contas à Pagar/Receber', icon: CalendarClock },
     { id: 'investments', label: 'Investimentos', icon: TrendingUp },
     { id: 'notifications', label: 'Lembretes & Alertas', icon: BellRing, badge: urgentBillsCount },
+    { id: 'subscription', label: 'Planos & Assinatura', icon: Crown },
     { id: 'security', label: 'Auditoria & Segurança', icon: ShieldAlert },
     { id: 'smart-reader', label: 'Leitor Inteligente', icon: FileText },
     { id: 'open-finance', label: 'Open Finance', icon: ShieldCheck },
@@ -83,6 +89,7 @@ export const Navbar: React.FC<NavbarProps> = ({
   if (isAdmin) {
     navItems.push({ id: 'categories', label: 'Categorias', icon: Tag });
   }
+
 
   return (
     <header className="bg-slate-900 text-white border-b border-slate-800 sticky top-0 z-30 shadow-md">
@@ -157,7 +164,24 @@ export const Navbar: React.FC<NavbarProps> = ({
               )}
             </button>
 
+            {/* Plan Status / PRO Upgrade Button */}
+            <button
+              id="btn-navbar-subscription"
+              onClick={() => setActiveTab('subscription')}
+              className={`inline-flex items-center gap-1.5 px-2.5 py-1.5 sm:px-3 sm:py-2 rounded-xl text-xs font-bold transition-all border ${
+                isPro
+                  ? 'bg-gradient-to-r from-amber-500/20 via-yellow-500/20 to-amber-600/20 text-amber-300 border-amber-500/50 hover:bg-amber-500/30 shadow-xs shadow-amber-500/20'
+                  : 'bg-gradient-to-r from-amber-500 via-orange-500 to-amber-500 text-slate-950 font-black shadow-md shadow-amber-500/20 hover:scale-[1.03] active:scale-[0.98]'
+              }`}
+              title={isPro ? 'Plano PRO Ativo - Ver detalhes' : 'Faça upgrade para o FinFlow PRO'}
+            >
+              <Crown className={`w-3.5 h-3.5 ${isPro ? 'text-amber-400' : 'text-slate-950'}`} />
+              <span className="hidden sm:inline">{isPro ? 'PRO ATIVO' : 'SEJA PRO'}</span>
+              <span className="sm:hidden">{isPro ? 'PRO' : 'PRO'}</span>
+            </button>
+
             {/* Smart Import Button */}
+
             <button
               onClick={onOpenSmartReader}
               className="inline-flex items-center gap-2 px-3 py-1.5 sm:px-4 sm:py-2 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white rounded-xl text-xs sm:text-sm font-semibold shadow-md shadow-indigo-900/30 transition-all hover:scale-[1.02] active:scale-[0.98]"
@@ -275,6 +299,33 @@ export const Navbar: React.FC<NavbarProps> = ({
                       {activeTab === 'security' && <Check className="w-4 h-4 text-white" />}
                     </button>
 
+                    {/* Planos & Assinatura */}
+                    <button
+                      onClick={() => {
+                        setActiveTab('subscription');
+                        setShowSettingsMenu(false);
+                      }}
+                      className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-semibold transition-colors ${
+                        activeTab === 'subscription'
+                          ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40 font-bold'
+                          : 'hover:bg-slate-700/80 text-slate-200'
+                      }`}
+                    >
+                      <div className="flex items-center gap-2.5">
+                        <Crown className="w-4 h-4 text-amber-400" />
+                        <span>Planos & Assinatura</span>
+                      </div>
+                      <span
+                        className={`text-[10px] font-extrabold px-1.5 py-0.5 rounded ${
+                          isPro
+                            ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40'
+                            : 'bg-slate-700 text-slate-300'
+                        }`}
+                      >
+                        {isPro ? 'PRO' : 'GRÁTIS'}
+                      </span>
+                    </button>
+
                     {/* Suporte WhatsApp */}
                     <a
                       href={getWhatsAppUrl()}
@@ -282,16 +333,18 @@ export const Navbar: React.FC<NavbarProps> = ({
                       rel="noopener noreferrer"
                       onClick={() => setShowSettingsMenu(false)}
                       className="w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-bold text-emerald-400 bg-emerald-950/20 hover:bg-emerald-950/50 border border-emerald-500/30 transition-colors"
-                      title={`Falar com Suporte no WhatsApp: ${SUPPORT_PHONE_DISPLAY}`}
+                      title="Falar com Suporte ou Ajuda via WhatsApp"
                     >
                       <div className="flex items-center gap-2.5">
                         <WhatsAppIcon className="w-4 h-4 text-emerald-400" />
                         <span>Suporte / Ajuda</span>
                       </div>
-                      <span className="text-[10px] text-emerald-300 font-extrabold bg-emerald-500/20 px-1.5 py-0.5 rounded">
-                        {SUPPORT_PHONE_DISPLAY}
+                      <span className="text-[10px] text-emerald-300 font-extrabold bg-emerald-500/20 px-2 py-0.5 rounded-full flex items-center gap-1">
+                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                        <span>WhatsApp</span>
                       </span>
                     </a>
+
 
                     {/* Logout Option */}
                     <div className="pt-1.5 border-t border-slate-700/60 mt-1">

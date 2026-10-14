@@ -50,7 +50,10 @@ import { MultiUserSyncModal } from './components/MultiUserSyncModal';
 import { CloudSyncBanner } from './components/CloudSyncBanner';
 import { AuthView } from './components/AuthView';
 import { FloatingWhatsAppSupport } from './components/WhatsAppSupport';
+import { SubscriptionView } from './components/SubscriptionView';
+import { UpgradePromptModal } from './components/UpgradePromptModal';
 import { useAuth } from './context/AuthContext';
+
 import {
   subscribeBankAccounts,
   saveBankAccountDoc,
@@ -1025,7 +1028,12 @@ export default function App() {
             onDeleteCategory={handleDeleteCategory}
           />
         )}
+
+        {activeTab === 'subscription' && (
+          <SubscriptionView onBackToDashboard={() => setActiveTab('dashboard')} />
+        )}
       </main>
+
 
       {/* Statement Audit Modal */}
       <StatementAuditModal
@@ -1094,8 +1102,12 @@ export default function App() {
         </div>
       )}
 
+      {/* Feature Gating & Plan Upgrade Modal */}
+      <UpgradePromptModal onNavigateToPlans={() => setActiveTab('subscription')} />
+
       {/* Floating WhatsApp Support Button with phone (11) 93205-873 */}
       <FloatingWhatsAppSupport />
     </div>
+
   );
 }

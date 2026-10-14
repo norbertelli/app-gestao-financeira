@@ -24,8 +24,9 @@ interface AuthContextType {
   login: () => Promise<void>;
   loginWithGoogle: () => Promise<void>;
   loginWithEmail: (email: string, pass: string) => Promise<void>;
-  registerWithEmail: (email: string, pass: string, displayName?: string) => Promise<void>;
+  registerWithEmail: (email: string, pass: string, displayName?: string, phone?: string) => Promise<void>;
   loginAsAdmin: (username?: string, password?: string) => Promise<void>;
+
   logout: () => Promise<void>;
   triggerSyncNotification: () => void;
 }
@@ -107,13 +108,18 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     }
   };
 
-  const handleRegisterWithEmail = async (email: string, pass: string, displayName?: string) => {
+  const handleRegisterWithEmail = async (
+    email: string,
+    pass: string,
+    displayName?: string,
+    phone?: string
+  ) => {
     setLoading(true);
     try {
       localStorage.removeItem('finflow_admin_mode');
       const loggedUser = await registerWithEmail(email, pass, displayName);
       if (loggedUser) {
-        await saveUserProfile(loggedUser, 'user');
+        await saveUserProfile(loggedUser, 'user', phone);
       }
     } catch (err) {
       console.error('Failed to register:', err);
@@ -122,6 +128,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       setLoading(false);
     }
   };
+
 
   const handleLoginAsAdmin = async (userParam?: string, passParam?: string) => {
     setLoading(true);

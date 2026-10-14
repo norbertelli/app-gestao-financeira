@@ -221,26 +221,88 @@ export const onAuthChange = (callback: (user: User | null) => void) => {
   return onAuthStateChanged(auth, callback);
 };
 
-// User Profile Storage
-export const saveUserProfile = async (user: User, role: 'admin' | 'user' = 'user') => {
-  const userRef = doc(db, 'users', user.uid);
+// Admin Support Phone helpers
+export const DEFAULT_ADMIN_SUPPORT_PHONE = '5511932058703';
+
+export const getAdminSupportPhone = async (): Promise<string> => {
   try {
+    const local = localStorage.getItem('finflow_admin_support_phone');
+    if (local && local.replace(/\D/g, '').length >= 10) {
+      return local.replace(/\D/g, '');
+    }
+
+    const snap = await getDoc(doc(db, 'system', 'admin_support'));
+    if (snap.exists() && snap.data()?.phone) {
+      const p = snap.data().phone.replace(/\D/g, '');
+      if (p.length >= 10) {
+        localStorage.setItem('finflow_admin_support_phone', p);
+        return p;
+      }
+    }
+  } catch (e) {
+    console.warn('Error reading admin support phone from Firestore:', e);
+  }
+  return DEFAULT_ADMIN_SUPPORT_PHONE;
+};
+
+export const saveAdminSupportPhone = async (phone: string): Promise<void> => {
+  const clean = phone.replace(/\D/g, '');
+  if (clean.length < 10) return;
+  try {
+    localStorage.setItem('finflow_admin_support_phone', clean);
     await setDoc(
-      userRef,
+      doc(db, 'system', 'admin_support'),
       {
-        userId: user.uid,
-        email: user.email || (role === 'admin' ? 'admin@finflow.app' : ''),
-        displayName: user.displayName || (role === 'admin' ? 'Administrador Master' : 'Usuário FinFlow'),
-        photoURL: user.photoURL || '',
-        role: role,
+        phone: clean,
         updatedAt: new Date().toISOString(),
       },
       { merge: true }
     );
+  } catch (e) {
+    console.warn('Error saving admin support phone:', e);
+  }
+};
+
+// User Profile Storage
+export const saveUserProfile = async (
+  user: User,
+  role: 'admin' | 'user' = 'user',
+  phone?: string
+) => {
+  const userRef = doc(db, 'users', user.uid);
+  try {
+    const profileData: Record<string, any> = {
+      userId: user.uid,
+      email: user.email || (role === 'admin' ? 'admin@finflow.app' : ''),
+      displayName: user.displayName || (role === 'admin' ? 'Administrador Master' : 'Usuário FinFlow'),
+      photoURL: user.photoURL || '',
+      role: role,
+      updatedAt: new Date().toISOString(),
+    };
+
+    if (phone) {
+      profileData.phone = phone.trim();
+    }
+
+    await setDoc(userRef, profileData, { merge: true });
+
+    // If this is an administrator, register their phone as the support phone
+    const emailLower = (user.email || '').toLowerCase();
+    const isAdminUser =
+      role === 'admin' ||
+      emailLower === 'norberto.bertelli.nb@gmail.com' ||
+      emailLower.includes('admin') ||
+      localStorage.getItem('finflow_admin_mode') === 'true';
+
+    if (isAdminUser) {
+      const adminPhoneToSave = phone ? phone.replace(/\D/g, '') : DEFAULT_ADMIN_SUPPORT_PHONE;
+      await saveAdminSupportPhone(adminPhoneToSave);
+    }
   } catch (error) {
     handleFirestoreError(error, OperationType.WRITE, `users/${user.uid}`);
   }
 };
+
 
 // Real-time Subscriptions for Multi-User & Multi-Device Sync
 

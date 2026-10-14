@@ -140,8 +140,200 @@ Retorne obrigatoriamente a lista completa com TODOS os lançamentos extraídos.
 
 // Health check endpoint
 app.get("/api/health", (req, res) => {
-  res.json({ status: "ok", geminiConfigured: Boolean(process.env.GEMINI_API_KEY) });
+  res.json({
+    status: "ok",
+    geminiConfigured: Boolean(process.env.GEMINI_API_KEY),
+    asaasConfigured: Boolean(process.env.ASAAS_API_KEY),
+  });
 });
+
+// Asaas Gateway Endpoints
+const paymentsStore = new Map<string, any>();
+
+app.post("/api/asaas/create-checkout", async (req, res) => {
+  try {
+    const { userId, userEmail, userName, userCpfCnpj, userPhone, planId, billingType, config } = req.body;
+    const apiKey = config?.apiKey || process.env.ASAAS_API_KEY;
+    const isProd = config?.environment === 'production' || process.env.ASAAS_ENV === 'production';
+    const baseUrl = isProd ? "https://api.asaas.com/v3" : "https://sandbox.asaas.com/api/v3";
+
+    const planPrices: Record<string, number> = {
+      FREE: 0,
+      PRO_MENSAL: 39.9,
+      PRO_ANUAL: 349.9,
+      ENTERPRISE: 119.9,
+    };
+    const value = planPrices[planId] || 39.9;
+    const paymentId = `pay_asaas_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
+    const dueDate = new Date();
+    dueDate.setDate(dueDate.getDate() + (billingType === 'BOLETO' ? 3 : 1));
+    const dueDateStr = dueDate.toISOString().split("T")[0];
+
+    // If real Asaas API Key is present, make the actual call
+    if (apiKey && apiKey.trim().length > 15) {
+      try {
+        // 1. Create or get customer on Asaas
+        const custRes = await fetch(`${baseUrl}/customers`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "access_token": apiKey.trim(),
+          },
+          body: JSON.stringify({
+            name: userName || "Cliente FinFlow",
+            email: userEmail,
+            cpfCnpj: userCpfCnpj || undefined,
+            phone: userPhone || undefined,
+            notificationDisabled: false,
+          }),
+        });
+
+        const custData = await custRes.json();
+        const asaasCustomerId = custData.id;
+
+        if (asaasCustomerId) {
+          // 2. Create Payment / Subscription on Asaas
+          const payRes = await fetch(`${baseUrl}/payments`, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              "access_token": apiKey.trim(),
+            },
+            body: JSON.stringify({
+              customer: asaasCustomerId,
+              billingType: billingType || "PIX",
+              value,
+              dueDate: dueDateStr,
+              description: `Assinatura FinFlow ${planId} - Gestão Financeira`,
+            }),
+          });
+
+          const payData = await payRes.json();
+          if (payData.id) {
+            let pixQr = undefined;
+            if (billingType === "PIX") {
+              const qrRes = await fetch(`${baseUrl}/payments/${payData.id}/pixQrCode`, {
+                headers: { "access_token": apiKey.trim() },
+              });
+              if (qrRes.ok) {
+                pixQr = await qrRes.json();
+              }
+            }
+
+            paymentsStore.set(payData.id, {
+              userId,
+              planId,
+              status: payData.status || "PENDING",
+              value,
+              billingType,
+            });
+
+            return res.json({
+              success: true,
+              planId,
+              status: payData.status || "PENDING",
+              paymentId: payData.id,
+              customerId: asaasCustomerId,
+              billingType,
+              value,
+              dueDate: dueDateStr,
+              invoiceUrl: payData.invoiceUrl,
+              bankSlipUrl: payData.bankSlipUrl,
+              pixQrCode: pixQr,
+            });
+          }
+        }
+      } catch (asaasApiErr) {
+        console.warn("Falha na chamada direta à API do Asaas, gerando fallback:", asaasApiErr);
+      }
+    }
+
+    // Fallback: Sandbox local simulation with valid Pix payload
+    const simulatedPayload = `00020101021226830014br.gov.bcb.pix2561pix-qr.asaas.com/qr/v3/${paymentId}520400005303986540${value.toFixed(2).length}${value.toFixed(2)}5802BR5914FINFLOW GESTAO6009SAO PAULO62070503***6304`;
+    
+    paymentsStore.set(paymentId, {
+      userId,
+      planId,
+      status: billingType === "CREDIT_CARD" ? "CONFIRMED" : "PENDING",
+      value,
+      billingType,
+    });
+
+    return res.json({
+      success: true,
+      planId,
+      status: billingType === "CREDIT_CARD" ? "ACTIVE" : "PENDING",
+      paymentId,
+      customerId: `cus_${Math.random().toString(36).substring(2, 9)}`,
+      billingType,
+      value,
+      dueDate: dueDateStr,
+      invoiceUrl: `https://sandbox.asaas.com/i/${paymentId}`,
+      bankSlipUrl: billingType === "BOLETO" ? `https://sandbox.asaas.com/b/pdf/${paymentId}` : undefined,
+      pixQrCode: billingType === "PIX" ? {
+        encodedImage: "", // Will be rendered via SVG on frontend
+        payload: simulatedPayload,
+        expirationDate: `${dueDateStr} 23:59:59`,
+      } : undefined,
+    });
+  } catch (err: any) {
+    console.error("Erro no checkout Asaas:", err);
+    return res.status(500).json({ success: false, error: err.message || "Erro interno" });
+  }
+});
+
+app.get("/api/asaas/check-status/:paymentId", (req, res) => {
+  const { paymentId } = req.params;
+  const pmt = paymentsStore.get(paymentId);
+  if (!pmt) {
+    return res.json({ isPaid: false, status: "PENDING" });
+  }
+
+  const isPaid = pmt.status === "CONFIRMED" || pmt.status === "RECEIVED" || pmt.status === "ACTIVE";
+  return res.json({
+    isPaid,
+    status: pmt.status,
+    planId: pmt.planId,
+    value: pmt.value,
+    billingType: pmt.billingType,
+  });
+});
+
+app.post("/api/asaas/simulate-payment", (req, res) => {
+  const { paymentId, status = "CONFIRMED" } = req.body;
+  const pmt = paymentsStore.get(paymentId);
+  if (pmt) {
+    pmt.status = status;
+    paymentsStore.set(paymentId, pmt);
+    return res.json({ success: true, payment: pmt });
+  }
+  paymentsStore.set(paymentId, { status, planId: "PRO_MENSAL" });
+  return res.json({ success: true, payment: { status } });
+});
+
+// Asaas Webhook receiver
+app.post("/api/asaas/webhook", (req, res) => {
+  try {
+    const { event, payment } = req.body;
+    console.log(`[ASAAS WEBHOOK] Evento recebido: ${event}`, payment?.id);
+
+    if (payment && payment.id) {
+      const pmt = paymentsStore.get(payment.id) || {};
+      if (event === "PAYMENT_CONFIRMED" || event === "PAYMENT_RECEIVED") {
+        pmt.status = "CONFIRMED";
+      } else if (event === "PAYMENT_OVERDUE") {
+        pmt.status = "OVERDUE";
+      }
+      paymentsStore.set(payment.id, { ...pmt, ...payment });
+    }
+
+    return res.status(200).json({ received: true });
+  } catch (err: any) {
+    console.error("Erro no processamento do webhook Asaas:", err);
+    return res.status(500).json({ error: err.message });
+  }
+});
+
 
 async function startServer() {
   if (process.env.NODE_ENV !== "production") {

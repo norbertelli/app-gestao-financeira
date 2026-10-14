@@ -255,4 +255,8 @@ export type ActiveTab =
   | 'notifications'
   | 'categories'
   | 'settings'
-  | 'security';
+  | 'security'
+  | 'subscription';
+
+export * from './types/subscription';
+

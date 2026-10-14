@@ -33,7 +33,10 @@ import {
   Sparkles,
   CheckCircle2,
   Info,
+  Crown,
 } from 'lucide-react';
+import { useSubscription } from '../context/SubscriptionContext';
+
 
 interface CreditCardsViewProps {
   cards: CreditCard[];
@@ -1121,6 +1124,20 @@ export const CreditCardsView: React.FC<CreditCardsViewProps> = ({
     0
   );
 
+  const { isPro, canAddCard, openUpgradeModal } = useSubscription();
+
+  const handleOpenAddCard = () => {
+    const check = canAddCard(cards.length);
+    if (!check.allowed) {
+      openUpgradeModal({
+        featureTitle: 'Limite de Cartões de Crédito Atingido',
+        featureDescription: check.message,
+      });
+      return;
+    }
+    setShowAddCardModal(true);
+  };
+
   return (
     <div className="space-y-6 pb-12">
       {/* Top Header */}
@@ -1135,9 +1152,26 @@ export const CreditCardsView: React.FC<CreditCardsViewProps> = ({
           </p>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-3">
+          <div
+            className={`px-3 py-1.5 rounded-xl text-xs font-bold border flex items-center gap-1.5 ${
+              isPro
+                ? 'bg-amber-500/10 text-amber-400 border-amber-500/30'
+                : cards.length >= 2
+                ? 'bg-rose-500/10 text-rose-400 border-rose-500/30'
+                : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 border-slate-200 dark:border-slate-700'
+            }`}
+          >
+            {isPro && <Crown className="w-3.5 h-3.5 text-amber-400" />}
+            <span>
+              {isPro
+                ? `${cards.length} Cartões (PRO Ilimitado)`
+                : `${cards.length}/2 Cartões (Plano Grátis)`}
+            </span>
+          </div>
+
           <button
-            onClick={() => setShowAddCardModal(true)}
+            onClick={handleOpenAddCard}
             className="inline-flex items-center gap-2 px-4 py-2.5 bg-slate-800 hover:bg-slate-700 dark:bg-slate-800 dark:hover:bg-slate-700 text-white rounded-xl font-semibold text-xs transition-all shadow-md"
           >
             <Plus className="w-4 h-4" />
@@ -1153,6 +1187,7 @@ export const CreditCardsView: React.FC<CreditCardsViewProps> = ({
           </button>
         </div>
       </div>
+
 
       {/* Global Credit KPIs */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -1234,9 +1269,10 @@ export const CreditCardsView: React.FC<CreditCardsViewProps> = ({
             Todos os cartões foram excluídos. Cadastre um novo cartão para gerenciar limites, faturas e compras parceladas.
           </p>
           <button
-            onClick={() => setShowAddCardModal(true)}
+            onClick={handleOpenAddCard}
             className="inline-flex items-center gap-2 px-4 py-2.5 bg-purple-600 hover:bg-purple-700 text-white rounded-xl font-semibold text-sm transition-all shadow-md"
           >
+
             <Plus className="w-4 h-4" />
             <span>Cadastrar Novo Cartão</span>
           </button>

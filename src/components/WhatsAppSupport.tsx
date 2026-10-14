@@ -1,22 +1,46 @@
-import React, { useState } from 'react';
-import { MessageCircle, ExternalLink, Copy, Check, Headphones, Phone, Clock } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { ExternalLink, Headphones, Clock, ArrowRight } from 'lucide-react';
+import { getAdminSupportPhone, DEFAULT_ADMIN_SUPPORT_PHONE } from '../services/firebase';
 
-export const SUPPORT_PHONE_DISPLAY = '(11) 93205-873';
-export const SUPPORT_PHONE_RAW = '551193205873';
 export const DEFAULT_WHATSAPP_MESSAGE = 'Olá! Preciso de ajuda com o FinFlow Gestão Financeira.';
 
+/**
+ * Custom hook to retrieve the administrator's support phone dynamically
+ */
+export const useAdminSupportPhone = () => {
+  const [adminPhone, setAdminPhone] = useState<string>(() => {
+    return localStorage.getItem('finflow_admin_support_phone') || DEFAULT_ADMIN_SUPPORT_PHONE;
+  });
+
+  useEffect(() => {
+    getAdminSupportPhone().then((phone) => {
+      if (phone) {
+        setAdminPhone(phone);
+      }
+    });
+  }, []);
+
+  const getWhatsAppUrl = (message: string = DEFAULT_WHATSAPP_MESSAGE) => {
+    const cleanPhone = (adminPhone || DEFAULT_ADMIN_SUPPORT_PHONE).replace(/\D/g, '');
+    return `https://wa.me/${cleanPhone}?text=${encodeURIComponent(message)}`;
+  };
+
+  return { adminPhone, getWhatsAppUrl };
+};
+
 export const getWhatsAppUrl = (message: string = DEFAULT_WHATSAPP_MESSAGE) => {
-  return `https://wa.me/${SUPPORT_PHONE_RAW}?text=${encodeURIComponent(message)}`;
+  const phone = (localStorage.getItem('finflow_admin_support_phone') || DEFAULT_ADMIN_SUPPORT_PHONE).replace(/\D/g, '');
+  return `https://wa.me/${phone}?text=${encodeURIComponent(message)}`;
 };
 
 interface WhatsAppButtonProps {
-  variant?: 'banner' | 'card' | 'navbar' | 'floating';
+  variant?: 'banner' | 'card' | 'navbar' | 'floating' | 'login';
   label?: string;
   className?: string;
 }
 
 /**
- * WhatsApp SVG icon component
+ * Official WhatsApp SVG icon component
  */
 export const WhatsAppIcon: React.FC<{ className?: string }> = ({ className = 'w-5 h-5' }) => (
   <svg
@@ -37,15 +61,8 @@ export const WhatsAppSupportButton: React.FC<WhatsAppButtonProps> = ({
   label = 'Suporte & Ajuda',
   className = '',
 }) => {
-  const [copied, setCopied] = useState(false);
+  const { getWhatsAppUrl } = useAdminSupportPhone();
   const [showModal, setShowModal] = useState(false);
-
-  const handleCopyPhone = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    navigator.clipboard.writeText(SUPPORT_PHONE_DISPLAY);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2500);
-  };
 
   const openWhatsAppDirectly = () => {
     window.open(getWhatsAppUrl(), '_blank', 'noopener,noreferrer');
@@ -56,28 +73,21 @@ export const WhatsAppSupportButton: React.FC<WhatsAppButtonProps> = ({
       <>
         <button
           onClick={() => setShowModal(true)}
-          className={`inline-flex items-center gap-2.5 px-4 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-xl text-xs sm:text-sm shadow-lg shadow-emerald-950/40 border border-emerald-400/40 transition-all hover:scale-[1.02] active:scale-[0.98] cursor-pointer ${className}`}
-          title={`Suporte ou Ajuda via WhatsApp: ${SUPPORT_PHONE_DISPLAY}`}
+          className={`inline-flex items-center gap-2 px-3.5 py-2.5 sm:px-4 sm:py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-xl text-xs sm:text-sm shadow-lg shadow-emerald-950/40 border border-emerald-400/40 transition-all hover:scale-[1.02] active:scale-[0.98] cursor-pointer ${className}`}
+          title="Falar com Suporte ou Ajuda via WhatsApp"
         >
-          <div className="w-6 h-6 rounded-lg bg-emerald-700/60 flex items-center justify-center shrink-0">
-            <WhatsAppIcon className="w-4 h-4 text-emerald-100" />
+          <div className="w-5 h-5 rounded-lg bg-emerald-700/60 flex items-center justify-center shrink-0">
+            <WhatsAppIcon className="w-3.5 h-3.5 text-emerald-100" />
           </div>
-          <div className="text-left leading-tight">
-            <div className="flex items-center gap-1.5">
-              <span>{label}</span>
-              <span className="w-2 h-2 rounded-full bg-emerald-300 animate-pulse" />
-            </div>
-            <span className="text-[10px] text-emerald-100/90 font-medium block">
-              {SUPPORT_PHONE_DISPLAY}
-            </span>
+          <div className="flex items-center gap-1.5">
+            <span>{label}</span>
+            <span className="w-2 h-2 rounded-full bg-emerald-300 animate-pulse" />
           </div>
         </button>
 
         {showModal && (
           <SupportDetailsModal
             onClose={() => setShowModal(false)}
-            onCopyPhone={handleCopyPhone}
-            copied={copied}
             onOpenWhatsApp={openWhatsAppDirectly}
           />
         )}
@@ -98,17 +108,17 @@ export const WhatsAppSupportButton: React.FC<WhatsAppButtonProps> = ({
             </div>
             <div>
               <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-400">
-                Atendimento Rápido
+                Canal Oficial
               </span>
               <h4 className="text-base font-extrabold text-white">Suporte & Ajuda WhatsApp</h4>
             </div>
           </div>
 
           <p className="text-xs text-slate-300 leading-relaxed">
-            Dúvidas sobre o funcionamento, importação de extratos ou suporte técnico? Fale diretamente pelo WhatsApp.
+            Dúvidas sobre o funcionamento, importação de extratos ou suporte técnico? Fale diretamente com o atendimento pelo WhatsApp.
           </p>
 
-          <div className="pt-2 flex flex-wrap items-center gap-2.5">
+          <div className="pt-2 flex items-center gap-2.5">
             <button
               onClick={openWhatsAppDirectly}
               className="inline-flex items-center gap-2 px-4 py-2 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-extrabold rounded-xl text-xs shadow-md shadow-emerald-950/50 transition-all hover:scale-[1.02] active:scale-[0.98] cursor-pointer"
@@ -117,31 +127,27 @@ export const WhatsAppSupportButton: React.FC<WhatsAppButtonProps> = ({
               <span>Chamar no WhatsApp</span>
               <ExternalLink className="w-3.5 h-3.5 opacity-80" />
             </button>
-
-            <button
-              onClick={handleCopyPhone}
-              className="inline-flex items-center gap-1.5 px-3 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 rounded-xl text-xs font-semibold transition-colors cursor-pointer"
-              title="Copiar número de telefone"
-            >
-              {copied ? (
-                <>
-                  <Check className="w-3.5 h-3.5 text-emerald-400" />
-                  <span className="text-emerald-400 font-bold">Copiado!</span>
-                </>
-              ) : (
-                <>
-                  <Copy className="w-3.5 h-3.5 text-slate-400" />
-                  <span>{SUPPORT_PHONE_DISPLAY}</span>
-                </>
-              )}
-            </button>
           </div>
         </div>
       </div>
     );
   }
 
-  // Floating variant default
+  if (variant === 'login') {
+    return (
+      <button
+        type="button"
+        onClick={openWhatsAppDirectly}
+        className={`w-full inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-emerald-950/40 hover:bg-emerald-900/60 border border-emerald-500/40 text-emerald-300 hover:text-emerald-200 rounded-2xl text-xs font-bold transition-all shadow-md cursor-pointer ${className}`}
+        title="Dúvidas no acesso ou suporte? Fale com a gente no WhatsApp"
+      >
+        <WhatsAppIcon className="w-4 h-4 text-emerald-400 shrink-0" />
+        <span>Precisa de ajuda? Falar com Suporte no WhatsApp</span>
+        <ExternalLink className="w-3 h-3 text-emerald-400 shrink-0 opacity-80" />
+      </button>
+    );
+  }
+
   return null;
 };
 
@@ -149,15 +155,8 @@ export const WhatsAppSupportButton: React.FC<WhatsAppButtonProps> = ({
  * Floating WhatsApp Widget fixed to bottom-right of the screen
  */
 export const FloatingWhatsAppSupport: React.FC = () => {
+  const { getWhatsAppUrl } = useAdminSupportPhone();
   const [isOpen, setIsOpen] = useState(false);
-  const [copied, setCopied] = useState(false);
-
-  const handleCopyPhone = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    navigator.clipboard.writeText(SUPPORT_PHONE_DISPLAY);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2500);
-  };
 
   const handleOpenWhatsApp = () => {
     window.open(getWhatsAppUrl(), '_blank', 'noopener,noreferrer');
@@ -167,7 +166,7 @@ export const FloatingWhatsAppSupport: React.FC = () => {
     <div className="fixed bottom-5 right-5 z-40 flex flex-col items-end">
       {/* Expanded Popover */}
       {isOpen && (
-        <div className="mb-3 w-80 bg-slate-900 border border-emerald-500/40 rounded-2xl shadow-2xl p-4 text-slate-100 animate-in fade-in slide-in-from-bottom-3 duration-200">
+        <div className="mb-3 w-76 bg-slate-900 border border-emerald-500/40 rounded-2xl shadow-2xl p-4 text-slate-100 animate-in fade-in slide-in-from-bottom-3 duration-200">
           <div className="flex items-start justify-between gap-2 pb-3 border-b border-slate-800">
             <div className="flex items-center gap-2.5">
               <div className="w-8 h-8 rounded-lg bg-emerald-500/20 border border-emerald-500/30 flex items-center justify-center text-emerald-400">
@@ -177,7 +176,7 @@ export const FloatingWhatsAppSupport: React.FC = () => {
                 <h4 className="text-sm font-extrabold text-white">Suporte & Ajuda</h4>
                 <div className="flex items-center gap-1.5 text-[11px] text-emerald-400 font-medium">
                   <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-                  <span>WhatsApp Online</span>
+                  <span>Atendimento Online</span>
                 </div>
               </div>
             </div>
@@ -191,25 +190,11 @@ export const FloatingWhatsAppSupport: React.FC = () => {
 
           <div className="py-3 space-y-2">
             <p className="text-xs text-slate-300 leading-relaxed">
-              Olá! Precisa de tirar dúvidas sobre o app, assinaturas ou recursos? Fale diretamente conosco pelo WhatsApp.
+              Olá! Precisa de suporte com login, extratos, contas ou assinaturas? Fale diretamente com nossa equipe pelo WhatsApp.
             </p>
-
-            <div className="bg-slate-950/60 rounded-xl p-2.5 border border-slate-800 flex items-center justify-between">
-              <div>
-                <p className="text-[10px] text-slate-400 uppercase font-semibold">Telefone de Atendimento</p>
-                <p className="text-xs font-bold text-white tracking-wide">{SUPPORT_PHONE_DISPLAY}</p>
-              </div>
-              <button
-                onClick={handleCopyPhone}
-                className="p-1.5 hover:bg-slate-800 rounded-lg text-slate-300 hover:text-emerald-400 transition-colors text-xs font-semibold inline-flex items-center gap-1 cursor-pointer"
-                title="Copiar telefone"
-              >
-                {copied ? <Check className="w-4 h-4 text-emerald-400" /> : <Copy className="w-4 h-4" />}
-              </button>
-            </div>
           </div>
 
-          <div className="pt-2">
+          <div className="pt-1">
             <button
               onClick={handleOpenWhatsApp}
               className="w-full inline-flex items-center justify-center gap-2 py-2.5 px-4 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-extrabold rounded-xl text-xs sm:text-sm shadow-lg shadow-emerald-950/40 transition-all hover:scale-[1.01] active:scale-[0.99] cursor-pointer"
@@ -222,23 +207,20 @@ export const FloatingWhatsAppSupport: React.FC = () => {
         </div>
       )}
 
-      {/* Floating Action Button */}
+      {/* Floating Action Button (No raw phone number displayed) */}
       <button
         id="btn-whatsapp-floating"
         onClick={() => setIsOpen(!isOpen)}
-        className="group relative inline-flex items-center gap-2.5 px-4 py-3 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white rounded-full shadow-2xl shadow-emerald-950/60 border border-emerald-400/40 transition-all hover:scale-105 active:scale-95 cursor-pointer"
-        title={`Fale Conosco via WhatsApp: ${SUPPORT_PHONE_DISPLAY}`}
+        className="group relative inline-flex items-center gap-2 px-3.5 py-3 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white rounded-full shadow-2xl shadow-emerald-950/60 border border-emerald-400/40 transition-all hover:scale-105 active:scale-95 cursor-pointer"
+        title="Fale Conosco via WhatsApp"
       >
-        <span className="relative flex h-3 w-3">
+        <span className="relative flex h-2.5 w-2.5">
           <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-300 opacity-75"></span>
-          <span className="relative inline-flex rounded-full h-3 w-3 bg-emerald-300"></span>
+          <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-300"></span>
         </span>
         <WhatsAppIcon className="w-5 h-5 text-white" />
-        <span className="text-xs sm:text-sm font-extrabold tracking-tight hidden sm:inline">
-          Suporte / Ajuda
-        </span>
-        <span className="text-[11px] font-bold bg-emerald-950/40 px-2 py-0.5 rounded-full border border-emerald-400/30 text-emerald-200 hidden md:inline">
-          (11) 93205-873
+        <span className="text-xs font-extrabold tracking-tight hidden sm:inline">
+          Suporte WhatsApp
         </span>
       </button>
     </div>
@@ -250,10 +232,8 @@ export const FloatingWhatsAppSupport: React.FC = () => {
  */
 const SupportDetailsModal: React.FC<{
   onClose: () => void;
-  onCopyPhone: (e: React.MouseEvent) => void;
-  copied: boolean;
   onOpenWhatsApp: () => void;
-}> = ({ onClose, onCopyPhone, copied, onOpenWhatsApp }) => {
+}> = ({ onClose, onOpenWhatsApp }) => {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-xs animate-in fade-in duration-150">
       <div className="bg-slate-900 border border-emerald-500/40 rounded-3xl p-6 sm:p-7 max-w-md w-full shadow-2xl text-slate-100 relative space-y-5">
@@ -277,12 +257,13 @@ const SupportDetailsModal: React.FC<{
           </div>
         </div>
 
-        <div className="bg-slate-950/70 border border-slate-800 rounded-2xl p-4 space-y-3">
-          <div className="flex items-center justify-between">
-            <span className="text-xs text-slate-400 font-medium">Número de Telefone:</span>
-            <span className="text-sm font-extrabold text-white tracking-wide">
-              {SUPPORT_PHONE_DISPLAY}
-            </span>
+        <div className="bg-slate-950/70 border border-slate-800 rounded-2xl p-4 space-y-2">
+          <div className="flex items-center justify-between text-xs text-slate-300">
+            <div className="flex items-center gap-2">
+              <Headphones className="w-4 h-4 text-emerald-400" />
+              <span className="font-semibold">Atendimento Direto</span>
+            </div>
+            <span className="text-emerald-400 font-bold">Online</span>
           </div>
 
           <div className="flex items-center justify-between text-xs text-slate-400 pt-2 border-t border-slate-800/80">
@@ -290,7 +271,7 @@ const SupportDetailsModal: React.FC<{
               <Clock className="w-3.5 h-3.5 text-emerald-400" />
               <span>Resposta Rápida</span>
             </div>
-            <span className="text-emerald-400 font-semibold">Atendimento Direto</span>
+            <span className="text-slate-300 font-medium">Tire suas dúvidas</span>
           </div>
         </div>
 
@@ -303,24 +284,6 @@ const SupportDetailsModal: React.FC<{
             <WhatsAppIcon className="w-5 h-5 text-slate-950" />
             <span>Iniciar Conversa no WhatsApp</span>
             <ExternalLink className="w-4 h-4" />
-          </button>
-
-          <button
-            type="button"
-            onClick={onCopyPhone}
-            className="w-full inline-flex items-center justify-center gap-2 py-2.5 px-4 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 rounded-xl text-xs font-bold transition-colors cursor-pointer"
-          >
-            {copied ? (
-              <>
-                <Check className="w-4 h-4 text-emerald-400" />
-                <span className="text-emerald-400">Número Copiado para Área de Transferência!</span>
-              </>
-            ) : (
-              <>
-                <Copy className="w-4 h-4 text-slate-400" />
-                <span>Copiar Número ({SUPPORT_PHONE_DISPLAY})</span>
-              </>
-            )}
           </button>
         </div>
       </div>

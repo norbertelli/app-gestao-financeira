@@ -29,7 +29,10 @@ import {
   AlertTriangle,
   Filter,
   RefreshCw,
+  Crown,
 } from 'lucide-react';
+import { useSubscription } from '../context/SubscriptionContext';
+
 
 interface BankAccountsViewProps {
   accounts: BankAccount[];
@@ -491,10 +494,21 @@ export const BankAccountsView: React.FC<BankAccountsViewProps> = ({
 
   const selectedAccount = accounts.find((a) => a.id === selectedAccountId) || accounts[0];
 
+  const { isPro, canAddAccount, canAddTransaction, openUpgradeModal } = useSubscription();
+
   const handleOpenAddAccount = () => {
+    const check = canAddAccount(accounts.length);
+    if (!check.allowed) {
+      openUpgradeModal({
+        featureTitle: 'Limite de Contas Bancárias Atingido',
+        featureDescription: check.message,
+      });
+      return;
+    }
     setEditingAccount(null);
     setShowAddAccModal(true);
   };
+
 
   const handleOpenEditAccount = (acc: BankAccount) => {
     setEditingAccount(acc);
@@ -581,6 +595,17 @@ export const BankAccountsView: React.FC<BankAccountsViewProps> = ({
 
   // Transaction Handlers
   const handleOpenAddTx = () => {
+    const currentMonth = new Date().toISOString().substring(0, 7);
+    const currentMonthTxCount = bankTransactions.filter((t) => t.date.startsWith(currentMonth)).length;
+    const check = canAddTransaction(currentMonthTxCount);
+    if (!check.allowed) {
+      openUpgradeModal({
+        featureTitle: 'Limite de Lançamentos Mensais Atingido',
+        featureDescription: check.message,
+      });
+      return;
+    }
+
     setTxDate(new Date().toISOString().split('T')[0]);
     setTxDesc('');
     setTxAmount('');
@@ -589,6 +614,7 @@ export const BankAccountsView: React.FC<BankAccountsViewProps> = ({
     setTxIsExpense(true);
     setShowAddTxModal(true);
   };
+
 
   const handleSaveAddTx = (e: React.FormEvent) => {
     e.preventDefault();
@@ -651,13 +677,33 @@ export const BankAccountsView: React.FC<BankAccountsViewProps> = ({
           </p>
         </div>
 
-        <button
-          onClick={handleOpenAddAccount}
-          className="inline-flex items-center gap-2 px-4 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-semibold text-sm transition-all shadow-md shadow-indigo-900/20"
-        >
-          <Plus className="w-4 h-4" />
-          <span>Nova Conta Bancária</span>
-        </button>
+        <div className="flex items-center gap-3">
+          <div
+            className={`px-3 py-1.5 rounded-xl text-xs font-bold border flex items-center gap-1.5 ${
+              isPro
+                ? 'bg-amber-500/10 text-amber-400 border-amber-500/30'
+                : accounts.length >= 2
+                ? 'bg-rose-500/10 text-rose-400 border-rose-500/30'
+                : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 border-slate-200 dark:border-slate-700'
+            }`}
+          >
+            {isPro && <Crown className="w-3.5 h-3.5 text-amber-400" />}
+            <span>
+              {isPro
+                ? `${accounts.length} Contas (PRO Ilimitado)`
+                : `${accounts.length}/2 Contas (Plano Grátis)`}
+            </span>
+          </div>
+
+          <button
+            onClick={handleOpenAddAccount}
+            className="inline-flex items-center gap-2 px-4 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-semibold text-sm transition-all shadow-md shadow-indigo-900/20"
+          >
+            <Plus className="w-4 h-4" />
+            <span>Nova Conta Bancária</span>
+          </button>
+        </div>
+
       </div>
 
       {/* Grid of Bank Accounts Cards or Empty State */}

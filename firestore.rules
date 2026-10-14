@@ -118,6 +118,20 @@ service cloud.firestore {
         allow get, list: if isOwner(userId);
         allow create, update, delete: if isOwner(userId) && isValidId(logId);
       }
+
+      // User Subscriptions & Gateway Orders
+      match /subscriptions/{subId} {
+        allow get, list: if isOwner(userId);
+        allow create, update: if isOwner(userId) && isValidId(subId);
+        allow delete: if false;
+      }
+    }
+
+    // System configurations (Asaas Gateway)
+    match /system/{docId} {
+      allow read: if isSignedIn();
+      allow write: if isSignedIn() && isValidId(docId);
     }
   }
 }
+
