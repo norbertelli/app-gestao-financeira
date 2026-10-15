@@ -24,7 +24,9 @@ import {
   LogOut,
   Shield,
   Crown,
+  Users,
 } from 'lucide-react';
+
 import { useAuth } from '../context/AuthContext';
 import { useSubscription } from '../context/SubscriptionContext';
 import { WhatsAppIcon, getWhatsAppUrl } from './WhatsAppSupport';
@@ -326,7 +328,27 @@ export const Navbar: React.FC<NavbarProps> = ({
                       </span>
                     </button>
 
+                    {/* Gestão de Assinantes (Admin) */}
+                    {isAdmin && (
+                      <button
+                        onClick={() => {
+                          setActiveTab('subscription');
+                          setShowSettingsMenu(false);
+                        }}
+                        className="w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-semibold text-amber-300 hover:bg-slate-700/80 transition-colors cursor-pointer"
+                      >
+                        <div className="flex items-center gap-2.5">
+                          <Users className="w-4 h-4 text-amber-400" />
+                          <span>Gestão de Assinantes</span>
+                        </div>
+                        <span className="text-[9px] font-black uppercase px-1.5 py-0.2 rounded bg-amber-500/20 text-amber-300 border border-amber-500/40">
+                          Admin
+                        </span>
+                      </button>
+                    )}
+
                     {/* Suporte WhatsApp */}
+
                     <a
                       href={getWhatsAppUrl()}
                       target="_blank"

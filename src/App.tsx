@@ -1105,9 +1105,10 @@ export default function App() {
       {/* Feature Gating & Plan Upgrade Modal */}
       <UpgradePromptModal onNavigateToPlans={() => setActiveTab('subscription')} />
 
-      {/* Floating WhatsApp Support Button with phone (11) 93205-873 */}
+      {/* Floating WhatsApp Support Button */}
       <FloatingWhatsAppSupport />
     </div>
+
 
   );
 }

@@ -28,6 +28,16 @@ service cloud.firestore {
       return resource.data;
     }
 
+    function isAdmin() {
+      return isSignedIn() && (
+        request.auth.token.email == 'norberto.bertelli.NB@gmail.com' ||
+        request.auth.token.email == 'norberto.bertelli.nb@gmail.com' ||
+        request.auth.token.email == 'admin@finflow.app' ||
+        request.auth.uid == 'admin_master_uid' ||
+        (request.auth.token.email != null && request.auth.token.email.matches('.*admin.*'))
+      );
+    }
+
     // Connection test document
     match /test/{docId} {
       allow read: if isSignedIn();
@@ -36,10 +46,11 @@ service cloud.firestore {
 
     // User Private Tree (Complete Multi-User & Multi-Device Isolation)
     match /users/{userId} {
-      allow get: if isOwner(userId);
-      allow list: if false;
-      allow create, update: if isOwner(userId) && isValidId(userId);
-      allow delete: if false;
+      allow get: if isOwner(userId) || isAdmin();
+      allow list: if isAdmin();
+      allow create, update: if (isOwner(userId) && isValidId(userId)) || isAdmin();
+      allow delete: if isAdmin();
+
 
       // Bank Accounts
       match /accounts/{accountId} {
