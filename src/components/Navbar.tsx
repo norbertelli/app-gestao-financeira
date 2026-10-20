@@ -90,8 +90,9 @@ export const Navbar: React.FC<NavbarProps> = ({
     { id: 'open-finance', label: 'Open Finance', icon: ShieldCheck },
   ];
 
-  // Include Categorias in nav if active or for admin quick access
+  // Include Tabela de Usuários and Categorias in nav for admin quick access
   if (isAdmin) {
+    navItems.push({ id: 'admin-users', label: 'Tabela de Usuários', icon: Users });
     navItems.push({ id: 'categories', label: 'Categorias', icon: Tag });
   }
 
@@ -199,12 +200,33 @@ export const Navbar: React.FC<NavbarProps> = ({
             {/* Testes CRUD (3 Perfis) Direct Button */}
             <button
               onClick={() => setIsRoleCrudModalOpen(true)}
-              className="hidden md:inline-flex items-center gap-1.5 px-3 py-1.5 bg-gradient-to-r from-emerald-500/10 via-teal-500/10 to-indigo-500/10 hover:from-emerald-500/20 hover:to-indigo-500/20 text-emerald-300 border border-emerald-500/40 rounded-xl text-xs font-bold transition-all hover:scale-[1.02] active:scale-[0.98] cursor-pointer"
+              className="hidden lg:inline-flex items-center gap-1.5 px-3 py-1.5 bg-gradient-to-r from-emerald-500/10 via-teal-500/10 to-indigo-500/10 hover:from-emerald-500/20 hover:to-indigo-500/20 text-emerald-300 border border-emerald-500/40 rounded-xl text-xs font-bold transition-all hover:scale-[1.02] active:scale-[0.98] cursor-pointer"
               title="Executar bateria de testes CRUD e RBAC para Usuário Comum, Administrador e Super Admin"
             >
               <ShieldCheck className="w-4 h-4 text-emerald-400" />
               <span>Testes CRUD (3 Perfis)</span>
             </button>
+
+            {/* Tabela de Usuários (Admin Direct Button) */}
+            {isAdmin && (
+              <button
+                id="btn-navbar-admin-users"
+                onClick={() => setActiveTab('admin-users')}
+                className={`inline-flex items-center gap-1.5 px-2.5 py-1.5 sm:px-3 sm:py-2 rounded-xl text-xs font-bold border transition-all cursor-pointer ${
+                  activeTab === 'admin-users'
+                    ? 'bg-amber-500 text-slate-950 border-amber-400 shadow-md font-black ring-2 ring-amber-400/40'
+                    : 'bg-amber-500/15 text-amber-300 border-amber-500/40 hover:bg-amber-500/25'
+                }`}
+                title="Acessar Tabela de Usuários (Painel do Administrador)"
+              >
+                <Users className="w-4 h-4 text-amber-400" />
+                <span className="hidden sm:inline">Tabela de Usuários</span>
+                <span className="sm:hidden">Usuários</span>
+                <span className="text-[9px] font-black uppercase px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-300 border border-amber-500/30">
+                  Admin
+                </span>
+              </button>
+            )}
 
             {/* Configurações (Engrenagem) Button for Admin */}
             <div className="relative" ref={menuRef}>
@@ -361,18 +383,22 @@ export const Navbar: React.FC<NavbarProps> = ({
                       </span>
                     </button>
 
-                    {/* Gestão de Assinantes (Admin) */}
+                    {/* Tabela de Usuários (Admin) */}
                     {isAdmin && (
                       <button
                         onClick={() => {
-                          setActiveTab('subscription');
+                          setActiveTab('admin-users');
                           setShowSettingsMenu(false);
                         }}
-                        className="w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-semibold text-amber-300 hover:bg-slate-700/80 transition-colors cursor-pointer"
+                        className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-semibold transition-colors cursor-pointer ${
+                          activeTab === 'admin-users'
+                            ? 'bg-amber-500 text-slate-950 font-black'
+                            : 'text-amber-300 hover:bg-slate-700/80'
+                        }`}
                       >
                         <div className="flex items-center gap-2.5">
                           <Users className="w-4 h-4 text-amber-400" />
-                          <span>Gestão de Assinantes</span>
+                          <span>Tabela de Usuários</span>
                         </div>
                         <span className="text-[9px] font-black uppercase px-1.5 py-0.2 rounded bg-amber-500/20 text-amber-300 border border-amber-500/40">
                           Admin

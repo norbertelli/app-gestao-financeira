@@ -256,7 +256,8 @@ export type ActiveTab =
   | 'categories'
   | 'settings'
   | 'security'
-  | 'subscription';
+  | 'subscription'
+  | 'admin-users';
 
 export * from './types/subscription';
 

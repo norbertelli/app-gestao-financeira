@@ -191,6 +191,61 @@ export const deleteSubscriber = async (userId: string): Promise<void> => {
   }
 };
 
+export const updateSubscriberRole = async (
+  userId: string,
+  role: 'admin' | 'user'
+): Promise<void> => {
+  try {
+    const userRef = doc(db, 'users', userId);
+    await setDoc(
+      userRef,
+      {
+        userId,
+        role,
+        updatedAt: new Date().toISOString(),
+      },
+      { merge: true }
+    );
+  } catch (e) {
+    console.warn('Error updating subscriber role:', e);
+  }
+};
+
+export const createSubscriberUser = async (
+  userData: {
+    displayName: string;
+    email: string;
+    phone?: string;
+    role: 'admin' | 'user';
+    subscriptionPlan: SubscriptionPlanId;
+  }
+): Promise<SubscriberUser> => {
+  const cleanEmail = userData.email.trim().toLowerCase();
+  const userId = 'usr_' + Math.abs(cleanEmail.split('').reduce((a, b) => ((a << 5) - a) + b.charCodeAt(0), 0)).toString(36) + '_' + Date.now().toString(36);
+  const now = new Date().toISOString();
+
+  const newUser: SubscriberUser = {
+    userId,
+    displayName: userData.displayName.trim(),
+    email: cleanEmail,
+    phone: userData.phone?.trim() || '',
+    role: userData.role,
+    subscriptionPlan: userData.subscriptionPlan,
+    subscriptionStatus: 'ACTIVE',
+    createdAt: now,
+    subscriptionUpdatedAt: now,
+  };
+
+  try {
+    const userRef = doc(db, 'users', userId);
+    await setDoc(userRef, newUser, { merge: true });
+  } catch (e) {
+    console.warn('Error creating subscriber in Firestore:', e);
+  }
+
+  return newUser;
+};
+
 export const getWhatsAppDirectUrl = (
   phone: string,
   clientName: string,
@@ -202,3 +257,4 @@ export const getWhatsAppDirectUrl = (
   } Como podemos ajudar você hoje?`;
   return `https://wa.me/${cleanPhone}?text=${encodeURIComponent(greeting)}`;
 };
+

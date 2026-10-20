@@ -22,12 +22,18 @@ import {
   Check,
   ArrowRight,
   Zap,
+  UserPlus,
+  Download,
+  Shield,
+  UserCog,
 } from 'lucide-react';
 import {
   SubscriberUser,
   fetchAllSubscribers,
   updateSubscriberPlan,
   updateSubscriberPhone,
+  updateSubscriberRole,
+  createSubscriberUser,
   deleteSubscriber,
   getWhatsAppDirectUrl,
 } from '../services/adminService';
@@ -45,6 +51,7 @@ export const AdminSubscribersView: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedPlanFilter, setSelectedPlanFilter] = useState<string>('ALL');
   const [selectedStatusFilter, setSelectedStatusFilter] = useState<string>('ALL');
+  const [selectedRoleFilter, setSelectedRoleFilter] = useState<string>('ALL');
 
   // Modals state
   const [editingPlanUser, setEditingPlanUser] = useState<SubscriberUser | null>(null);
@@ -52,6 +59,17 @@ export const AdminSubscribersView: React.FC = () => {
   const [editingPhoneUser, setEditingPhoneUser] = useState<SubscriberUser | null>(null);
   const [newPhoneInput, setNewPhoneInput] = useState('');
   const [toastMessage, setToastMessage] = useState<string | null>(null);
+
+  // New User Creation Modal
+  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const [createForm, setCreateForm] = useState({
+    displayName: '',
+    email: '',
+    phone: '',
+    role: 'user' as 'admin' | 'user',
+    subscriptionPlan: 'FREE' as SubscriptionPlanId,
+  });
+  const [isSubmittingUser, setIsSubmittingUser] = useState(false);
 
   const loadSubscribers = async () => {
     setLoading(true);
@@ -71,7 +89,7 @@ export const AdminSubscribersView: React.FC = () => {
 
   const showToast = (msg: string) => {
     setToastMessage(msg);
-    setTimeout(() => setToastMessage(null), 3000);
+    setTimeout(() => setToastMessage(null), 3500);
   };
 
   // Filter subscribers
@@ -88,11 +106,16 @@ export const AdminSubscribersView: React.FC = () => {
     const matchesStatus =
       selectedStatusFilter === 'ALL' || sub.subscriptionStatus === selectedStatusFilter;
 
-    return matchesSearch && matchesPlan && matchesStatus;
+    const matchesRole =
+      selectedRoleFilter === 'ALL' ||
+      (selectedRoleFilter === 'admin' ? sub.role === 'admin' : sub.role !== 'admin');
+
+    return matchesSearch && matchesPlan && matchesStatus && matchesRole;
   });
 
   // Calculate Metrics
   const totalUsers = subscribers.length;
+  const adminCount = subscribers.filter((s) => s.role === 'admin').length;
   const proSubscribersCount = subscribers.filter(
     (s) => s.subscriptionPlan !== 'FREE' && s.subscriptionStatus === 'ACTIVE'
   ).length;
@@ -134,47 +157,141 @@ export const AdminSubscribersView: React.FC = () => {
     showToast(`Telefone de ${editingPhoneUser.displayName} atualizado com sucesso!`);
   };
 
+  const handleToggleRole = async (userToUpdate: SubscriberUser) => {
+    const nextRole = userToUpdate.role === 'admin' ? 'user' : 'admin';
+    const actionLabel = nextRole === 'admin' ? 'promover a Administrador' : 'rebaixar para Usuário Comum';
+    
+    if (confirm(`Deseja realmente ${actionLabel} o usuário "${userToUpdate.displayName}"?`)) {
+      await updateSubscriberRole(userToUpdate.userId, nextRole);
+      setSubscribers((prev) =>
+        prev.map((s) =>
+          s.userId === userToUpdate.userId ? { ...s, role: nextRole } : s
+        )
+      );
+      showToast(`Papel de ${userToUpdate.displayName} alterado para ${nextRole === 'admin' ? 'Administrador' : 'Usuário Comum'}!`);
+    }
+  };
+
   const handleDeleteUser = async (userToDelete: SubscriberUser) => {
-    if (confirm(`Deseja realmente remover o usuário "${userToDelete.displayName}"?`)) {
+    if (confirm(`Deseja realmente remover o usuário "${userToDelete.displayName}" do sistema?`)) {
       await deleteSubscriber(userToDelete.userId);
       setSubscribers((prev) => prev.filter((s) => s.userId !== userToDelete.userId));
-      showToast(`Usuário removido.`);
+      showToast(`Usuário removido com sucesso.`);
     }
+  };
+
+  const handleCreateUser = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!createForm.displayName.trim() || !createForm.email.trim()) {
+      alert('Por favor, informe ao menos o Nome e o E-mail.');
+      return;
+    }
+    setIsSubmittingUser(true);
+    try {
+      const newUser = await createSubscriberUser(createForm);
+      setSubscribers((prev) => [newUser, ...prev]);
+      setIsCreateModalOpen(false);
+      setCreateForm({
+        displayName: '',
+        email: '',
+        phone: '',
+        role: 'user',
+        subscriptionPlan: 'FREE',
+      });
+      showToast(`Usuário "${newUser.displayName}" cadastrado com sucesso!`);
+    } catch (err) {
+      console.error('Erro ao cadastrar usuário:', err);
+      alert('Erro ao cadastrar usuário no banco de dados.');
+    } finally {
+      setIsSubmittingUser(false);
+    }
+  };
+
+  const handleExportCSV = () => {
+    if (subscribers.length === 0) {
+      alert('Não há usuários cadastrados para exportar.');
+      return;
+    }
+
+    const headers = ['ID', 'Nome', 'Email', 'Telefone', 'Perfil', 'Plano', 'Status', 'Data Criacao'];
+    const rows = filteredSubscribers.map((u) => [
+      `"${u.userId}"`,
+      `"${u.displayName}"`,
+      `"${u.email}"`,
+      `"${u.phone || ''}"`,
+      `"${u.role === 'admin' ? 'Administrador' : 'Usuario'}"`,
+      `"${SUBSCRIPTION_PLANS[u.subscriptionPlan]?.name || u.subscriptionPlan}"`,
+      `"${u.subscriptionStatus}"`,
+      `"${u.createdAt || ''}"`,
+    ]);
+
+    const csvContent = 'data:text/csv;charset=utf-8,\uFEFF' + [headers.join(';'), ...rows.map((e) => e.join(';'))].join('\n');
+    const encodedUri = encodeURI(csvContent);
+    const link = document.createElement('a');
+    link.setAttribute('href', encodedUri);
+    link.setAttribute('download', `tabela_usuarios_finflow_${new Date().toISOString().split('T')[0]}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    showToast('Tabela de usuários exportada com sucesso em formato CSV!');
   };
 
   return (
     <div className="space-y-6 animate-in fade-in duration-200">
       {/* Toast Alert */}
       {toastMessage && (
-        <div className="fixed top-20 right-6 z-50 p-4 bg-emerald-600 text-white rounded-2xl shadow-2xl flex items-center gap-2 text-xs font-bold animate-in slide-in-from-top-2">
-          <CheckCircle2 className="w-4 h-4 shrink-0" />
+        <div className="fixed top-20 right-6 z-50 p-4 bg-emerald-600 text-white rounded-2xl shadow-2xl flex items-center gap-2 text-xs font-bold animate-in slide-in-from-top-2 border border-emerald-400">
+          <CheckCircle2 className="w-4 h-4 shrink-0 text-white" />
           <span>{toastMessage}</span>
         </div>
       )}
 
       {/* Header Banner */}
-      <div className="bg-slate-900 border border-slate-800 rounded-3xl p-6 sm:p-8 shadow-xl flex flex-col md:flex-row md:items-center justify-between gap-4">
+      <div className="bg-slate-900 border border-slate-800 rounded-3xl p-6 sm:p-8 shadow-xl flex flex-col md:flex-row md:items-center justify-between gap-5">
         <div>
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-indigo-500/10 border border-indigo-500/30 text-indigo-300 text-xs font-black uppercase tracking-wider mb-2">
-            <Users className="w-3.5 h-3.5 text-indigo-400" />
-            <span>Módulo de Gestão de Clientes & Assinaturas</span>
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-amber-500/10 border border-amber-500/30 text-amber-300 text-xs font-black uppercase tracking-wider mb-2">
+            <Users className="w-3.5 h-3.5 text-amber-400" />
+            <span>Módulo de Gestão & Administração</span>
           </div>
-          <h2 className="text-2xl sm:text-3xl font-black text-white">
-            Painel de Assinantes & Clientes
+          <h2 className="text-2xl sm:text-3xl font-black text-white flex items-center gap-2">
+            <span>Tabela de Usuários & Assinantes</span>
+            <span className="text-xs px-2.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 font-bold uppercase">
+              Admin
+            </span>
           </h2>
-          <p className="text-xs sm:text-sm text-slate-400 mt-1">
-            Gerencie planos, dados de contato, contate clientes via WhatsApp e conceda acessos PRO manuais.
+          <p className="text-xs sm:text-sm text-slate-400 mt-1 max-w-2xl">
+            Acesso exclusivo para administradores: visualize a tabela completa de usuários do Firestore, atribua permissões de Administrador, gerencie planos e exporte relatórios.
           </p>
         </div>
 
-        <button
-          onClick={loadSubscribers}
-          disabled={loading}
-          className="inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-slate-800 hover:bg-slate-700 active:bg-slate-800 text-white font-bold text-xs rounded-xl border border-slate-700 transition-all cursor-pointer self-start md:self-center"
-        >
-          <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
-          <span>Atualizar Lista</span>
-        </button>
+        <div className="flex flex-wrap items-center gap-2 self-start md:self-center">
+          <button
+            onClick={() => setIsCreateModalOpen(true)}
+            className="inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-slate-950 font-black text-xs rounded-xl shadow-lg shadow-amber-500/20 transition-all cursor-pointer hover:scale-[1.02] active:scale-[0.98]"
+          >
+            <UserPlus className="w-4 h-4" />
+            <span>Novo Usuário</span>
+          </button>
+
+          <button
+            onClick={handleExportCSV}
+            className="inline-flex items-center justify-center gap-2 px-3.5 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold text-xs rounded-xl border border-slate-700 transition-all cursor-pointer"
+            title="Exportar dados filtrados para arquivo CSV"
+          >
+            <Download className="w-3.5 h-3.5 text-indigo-400" />
+            <span>Exportar CSV</span>
+          </button>
+
+          <button
+            onClick={loadSubscribers}
+            disabled={loading}
+            className="inline-flex items-center justify-center gap-2 px-3.5 py-2.5 bg-slate-800 hover:bg-slate-700 active:bg-slate-800 text-white font-bold text-xs rounded-xl border border-slate-700 transition-all cursor-pointer"
+            title="Recarregar dados do Firestore"
+          >
+            <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
+            <span>Atualizar</span>
+          </button>
+        </div>
       </div>
 
       {/* KPI Cards Grid */}
@@ -188,7 +305,19 @@ export const AdminSubscribersView: React.FC = () => {
             </div>
           </div>
           <div className="text-3xl font-black text-white">{totalUsers}</div>
-          <p className="text-[11px] text-slate-500 mt-1">Cadastrados no banco Firestore</p>
+          <p className="text-[11px] text-slate-500 mt-1">Registrados no banco de dados</p>
+        </div>
+
+        {/* Administradores */}
+        <div className="bg-slate-900 border border-emerald-500/30 p-5 rounded-2xl shadow-md">
+          <div className="flex items-center justify-between text-emerald-400 mb-2">
+            <span className="text-xs font-bold uppercase tracking-wider">Administradores</span>
+            <div className="p-2 bg-emerald-950/60 text-emerald-400 rounded-xl">
+              <ShieldCheck className="w-4 h-4" />
+            </div>
+          </div>
+          <div className="text-3xl font-black text-emerald-400">{adminCount}</div>
+          <p className="text-[11px] text-slate-400 mt-1">Com privilégio de gestão</p>
         </div>
 
         {/* Pro Subscribers */}
@@ -203,30 +332,18 @@ export const AdminSubscribersView: React.FC = () => {
           <p className="text-[11px] text-slate-400 mt-1">Clientes com planos pagos ativos</p>
         </div>
 
-        {/* MRR (Monthly Recurring Revenue) */}
-        <div className="bg-slate-900 border border-emerald-500/30 p-5 rounded-2xl shadow-md">
-          <div className="flex items-center justify-between text-emerald-400 mb-2">
+        {/* MRR */}
+        <div className="bg-slate-900 border border-purple-500/30 p-5 rounded-2xl shadow-md">
+          <div className="flex items-center justify-between text-purple-400 mb-2">
             <span className="text-xs font-bold uppercase tracking-wider">MRR Estimado</span>
-            <div className="p-2 bg-emerald-950/60 text-emerald-400 rounded-xl">
+            <div className="p-2 bg-purple-950/60 text-purple-400 rounded-xl">
               <DollarSign className="w-4 h-4" />
             </div>
           </div>
-          <div className="text-3xl font-black text-emerald-400">
+          <div className="text-3xl font-black text-purple-400">
             R$ {totalMRR.toFixed(2).replace('.', ',')}
           </div>
           <p className="text-[11px] text-slate-400 mt-1">Receita Recorrente Mensal</p>
-        </div>
-
-        {/* Conversion Rate */}
-        <div className="bg-slate-900 border border-slate-800 p-5 rounded-2xl shadow-md">
-          <div className="flex items-center justify-between text-slate-400 mb-2">
-            <span className="text-xs font-bold uppercase tracking-wider">Taxa de Conversão</span>
-            <div className="p-2 bg-purple-950/60 text-purple-400 rounded-xl">
-              <TrendingUp className="w-4 h-4" />
-            </div>
-          </div>
-          <div className="text-3xl font-black text-purple-400">{conversionRate}%</div>
-          <p className="text-[11px] text-slate-500 mt-1">De usuários grátis para PRO</p>
         </div>
       </div>
 
@@ -244,6 +361,17 @@ export const AdminSubscribersView: React.FC = () => {
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
+          {/* Role filter */}
+          <select
+            value={selectedRoleFilter}
+            onChange={(e) => setSelectedRoleFilter(e.target.value)}
+            className="bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-slate-300 focus:outline-none"
+          >
+            <option value="ALL">Todos os Perfis</option>
+            <option value="admin">Apenas Administradores</option>
+            <option value="user">Apenas Usuários Comuns</option>
+          </select>
+
           {/* Plan filter */}
           <select
             value={selectedPlanFilter}
@@ -277,24 +405,26 @@ export const AdminSubscribersView: React.FC = () => {
           <table className="w-full text-left text-xs border-collapse">
             <thead>
               <tr className="bg-slate-950 border-b border-slate-800 text-slate-400 font-bold uppercase tracking-wider text-[11px]">
-                <th className="py-4 px-4 sm:px-6">Cliente / Usuário</th>
+                <th className="py-4 px-4 sm:px-6">Usuário</th>
                 <th className="py-4 px-4">Contato (E-mail / WhatsApp)</th>
-                <th className="py-4 px-4 text-center">Plano Atual</th>
-                <th className="py-4 px-4 text-center">Status Asaas</th>
+                <th className="py-4 px-4 text-center">Perfil / Permissão</th>
+                <th className="py-4 px-4 text-center">Plano</th>
+                <th className="py-4 px-4 text-center">Status</th>
                 <th className="py-4 px-4 text-center">Ações do Administrador</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-800/60 text-slate-200">
               {filteredSubscribers.length === 0 ? (
                 <tr>
-                  <td colSpan={5} className="py-12 text-center text-slate-500">
-                    Nenhum cliente ou assinante encontrado com os filtros aplicados.
+                  <td colSpan={6} className="py-12 text-center text-slate-500">
+                    Nenhum usuário ou assinante encontrado com os filtros aplicados.
                   </td>
                 </tr>
               ) : (
                 filteredSubscribers.map((sub) => {
                   const isProUser = sub.subscriptionPlan !== 'FREE';
                   const planInfo = SUBSCRIPTION_PLANS[sub.subscriptionPlan] || SUBSCRIPTION_PLANS.FREE;
+                  const isAdminUser = sub.role === 'admin';
 
                   return (
                     <tr
@@ -306,28 +436,28 @@ export const AdminSubscribersView: React.FC = () => {
                         <div className="flex items-center gap-3">
                           <div
                             className={`w-9 h-9 rounded-xl flex items-center justify-center font-bold text-xs uppercase shadow-xs shrink-0 ${
-                              sub.role === 'admin'
+                              isAdminUser
                                 ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/40'
                                 : isProUser
                                 ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40'
                                 : 'bg-slate-800 text-slate-300'
                             }`}
                           >
-                            {sub.displayName.slice(0, 2) || 'CL'}
+                            {sub.displayName.slice(0, 2) || 'US'}
                           </div>
                           <div>
                             <div className="flex items-center gap-1.5">
                               <span className="font-bold text-white text-xs sm:text-sm">
                                 {sub.displayName}
                               </span>
-                              {sub.role === 'admin' && (
+                              {isAdminUser && (
                                 <span className="text-[9px] font-black uppercase px-1.5 py-0.2 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
                                   Admin
                                 </span>
                               )}
                             </div>
                             <span className="text-[10px] text-slate-500 font-mono">
-                              ID: {sub.userId.substring(0, 14)}...
+                              ID: {sub.userId.substring(0, 16)}...
                             </span>
                           </div>
                         </div>
@@ -353,7 +483,7 @@ export const AdminSubscribersView: React.FC = () => {
                                 target="_blank"
                                 rel="noopener noreferrer"
                                 className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg bg-emerald-950/60 hover:bg-emerald-900/60 border border-emerald-500/40 text-[10px] font-bold text-emerald-300 transition-colors cursor-pointer"
-                                title="Abrir WhatsApp para falar com este cliente"
+                                title="Abrir WhatsApp para falar com este usuário"
                               >
                                 <WhatsAppIcon className="w-3 h-3 text-emerald-400" />
                                 <span>WhatsApp</span>
@@ -371,6 +501,20 @@ export const AdminSubscribersView: React.FC = () => {
                             </button>
                           )}
                         </div>
+                      </td>
+
+                      {/* Perfil / Role */}
+                      <td className="py-4 px-4 text-center">
+                        <span
+                          className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-xl text-xs font-bold border ${
+                            isAdminUser
+                              ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40'
+                              : 'bg-slate-800 text-slate-300 border-slate-700'
+                          }`}
+                        >
+                          <Shield className="w-3 h-3 text-emerald-400" />
+                          <span>{isAdminUser ? 'Administrador' : 'Usuário Comum'}</span>
+                        </span>
                       </td>
 
                       {/* Plan */}
@@ -409,7 +553,7 @@ export const AdminSubscribersView: React.FC = () => {
                           {sub.subscriptionStatus === 'ACTIVE'
                             ? 'Ativo'
                             : sub.subscriptionStatus === 'PENDING'
-                            ? 'Aguardando Pagamento'
+                            ? 'Pendente'
                             : 'Cancelado'}
                         </span>
                       </td>
@@ -417,37 +561,51 @@ export const AdminSubscribersView: React.FC = () => {
                       {/* Admin Actions */}
                       <td className="py-4 px-4 text-center">
                         <div className="flex items-center justify-center gap-1.5">
+                          {/* Change Plan Button */}
                           <button
                             onClick={() => {
                               setEditingPlanUser(sub);
                               setNewPlanSelection(sub.subscriptionPlan);
                             }}
                             className="px-2.5 py-1.5 bg-indigo-600/30 hover:bg-indigo-600/50 border border-indigo-500/40 text-indigo-300 rounded-xl text-xs font-bold transition-colors cursor-pointer"
-                            title="Alterar plano do cliente"
+                            title="Alterar plano do usuário"
                           >
-                            Alterar Plano
+                            Plano
                           </button>
 
+                          {/* Toggle Role Button */}
+                          <button
+                            onClick={() => handleToggleRole(sub)}
+                            className={`p-1.5 rounded-xl border transition-colors cursor-pointer ${
+                              isAdminUser
+                                ? 'bg-emerald-950/60 border-emerald-500/40 text-emerald-300 hover:bg-emerald-900/60'
+                                : 'bg-slate-800 border-slate-700 text-slate-400 hover:text-white hover:bg-slate-700'
+                            }`}
+                            title={isAdminUser ? 'Rebaixar para Usuário Comum' : 'Promover a Administrador'}
+                          >
+                            <UserCog className="w-3.5 h-3.5" />
+                          </button>
+
+                          {/* Edit Phone Button */}
                           <button
                             onClick={() => {
                               setEditingPhoneUser(sub);
                               setNewPhoneInput(sub.phone || '');
                             }}
-                            className="p-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl transition-colors cursor-pointer"
-                            title="Editar telefone do cliente"
+                            className="p-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl border border-slate-700 transition-colors cursor-pointer"
+                            title="Editar telefone do usuário"
                           >
                             <Edit2 className="w-3.5 h-3.5" />
                           </button>
 
-                          {sub.role !== 'admin' && (
-                            <button
-                              onClick={() => handleDeleteUser(sub)}
-                              className="p-1.5 bg-slate-800 hover:bg-rose-950/60 text-slate-400 hover:text-rose-300 rounded-xl transition-colors cursor-pointer"
-                              title="Remover cliente"
-                            >
-                              <Trash2 className="w-3.5 h-3.5" />
-                            </button>
-                          )}
+                          {/* Delete Button */}
+                          <button
+                            onClick={() => handleDeleteUser(sub)}
+                            className="p-1.5 bg-slate-800 hover:bg-rose-950/60 text-slate-400 hover:text-rose-300 rounded-xl border border-slate-700 transition-colors cursor-pointer"
+                            title="Remover usuário"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
                         </div>
                       </td>
                     </tr>
@@ -458,6 +616,122 @@ export const AdminSubscribersView: React.FC = () => {
           </table>
         </div>
       </div>
+
+      {/* Modal: Create New User */}
+      {isCreateModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 p-4 backdrop-blur-xs animate-in fade-in duration-150">
+          <div className="bg-slate-900 border border-slate-700 rounded-3xl p-6 max-w-md w-full shadow-2xl text-slate-100 relative space-y-4">
+            <button
+              onClick={() => setIsCreateModalOpen(false)}
+              className="absolute top-4 right-4 text-slate-400 hover:text-white p-1 rounded-lg hover:bg-slate-800 text-sm cursor-pointer"
+            >
+              ✕
+            </button>
+
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-amber-500/20 border border-amber-500/40 flex items-center justify-center text-amber-400">
+                <UserPlus className="w-5 h-5" />
+              </div>
+              <div>
+                <h3 className="text-base font-bold text-white">Cadastrar Novo Usuário</h3>
+                <p className="text-xs text-slate-400">Adicione um novo usuário diretamente no Firestore</p>
+              </div>
+            </div>
+
+            <form onSubmit={handleCreateUser} className="space-y-3 pt-2">
+              <div>
+                <label className="text-xs font-semibold text-slate-300 block mb-1">
+                  Nome Completo *
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={createForm.displayName}
+                  onChange={(e) => setCreateForm({ ...createForm, displayName: e.target.value })}
+                  placeholder="Ex: Carlos Ferreira"
+                  className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-indigo-500"
+                />
+              </div>
+
+              <div>
+                <label className="text-xs font-semibold text-slate-300 block mb-1">
+                  E-mail *
+                </label>
+                <input
+                  type="email"
+                  required
+                  value={createForm.email}
+                  onChange={(e) => setCreateForm({ ...createForm, email: e.target.value })}
+                  placeholder="carlos@exemplo.com"
+                  className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-indigo-500"
+                />
+              </div>
+
+              <div>
+                <label className="text-xs font-semibold text-slate-300 block mb-1">
+                  Telefone / WhatsApp
+                </label>
+                <input
+                  type="tel"
+                  value={createForm.phone}
+                  onChange={(e) => setCreateForm({ ...createForm, phone: e.target.value })}
+                  placeholder="5511988776655"
+                  className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-indigo-500"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <label className="text-xs font-semibold text-slate-300 block mb-1">
+                    Perfil de Acesso
+                  </label>
+                  <select
+                    value={createForm.role}
+                    onChange={(e) => setCreateForm({ ...createForm, role: e.target.value as 'admin' | 'user' })}
+                    className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none"
+                  >
+                    <option value="user">Usuário Comum</option>
+                    <option value="admin">Administrador</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="text-xs font-semibold text-slate-300 block mb-1">
+                    Plano Inicial
+                  </label>
+                  <select
+                    value={createForm.subscriptionPlan}
+                    onChange={(e) => setCreateForm({ ...createForm, subscriptionPlan: e.target.value as SubscriptionPlanId })}
+                    className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none"
+                  >
+                    <option value="FREE">Gratuito</option>
+                    <option value="PRO_MENSAL">PRO Mensal</option>
+                    <option value="PRO_ANUAL">PRO Anual</option>
+                    <option value="ENTERPRISE">Enterprise</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-800">
+                <button
+                  type="button"
+                  onClick={() => setIsCreateModalOpen(false)}
+                  className="py-2.5 px-4 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl text-xs font-semibold cursor-pointer"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="submit"
+                  disabled={isSubmittingUser}
+                  className="py-2.5 px-5 bg-gradient-to-r from-amber-500 to-orange-500 text-slate-950 rounded-xl text-xs font-black shadow-lg shadow-amber-500/20 cursor-pointer disabled:opacity-50"
+                >
+                  {isSubmittingUser ? 'Cadastrando...' : 'Cadastrar Usuário'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
 
       {/* Modal: Change User Plan */}
       {editingPlanUser && (

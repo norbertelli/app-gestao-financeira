@@ -51,6 +51,7 @@ import { CloudSyncBanner } from './components/CloudSyncBanner';
 import { AuthView } from './components/AuthView';
 import { FloatingWhatsAppSupport } from './components/WhatsAppSupport';
 import { SubscriptionView } from './components/SubscriptionView';
+import { AdminSubscribersView } from './components/AdminSubscribersView';
 import { UpgradePromptModal } from './components/UpgradePromptModal';
 import { useAuth } from './context/AuthContext';
 
@@ -1031,6 +1032,10 @@ export default function App() {
 
         {activeTab === 'subscription' && (
           <SubscriptionView onBackToDashboard={() => setActiveTab('dashboard')} />
+        )}
+
+        {activeTab === 'admin-users' && (
+          <AdminSubscribersView />
         )}
       </main>
 
