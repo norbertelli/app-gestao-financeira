@@ -4,6 +4,9 @@ import { saveAuditLogDoc } from './firebase';
 const LOCAL_STORAGE_KEY = 'finflow_audit_logs';
 
 export const getLocalAuditLogs = (): AuditLogItem[] => {
+  if (typeof window === 'undefined' || typeof localStorage === 'undefined') {
+    return [];
+  }
   try {
     const raw = localStorage.getItem(LOCAL_STORAGE_KEY);
     if (!raw) return [];
@@ -17,10 +20,12 @@ export const getLocalAuditLogs = (): AuditLogItem[] => {
 export const saveLocalAuditLog = (item: AuditLogItem): AuditLogItem[] => {
   const current = getLocalAuditLogs();
   const updated = [item, ...current.slice(0, 199)]; // Keep latest 200 locally
-  try {
-    localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(updated));
-  } catch (e) {
-    console.warn('LocalStorage limit reached when saving audit log:', e);
+  if (typeof window !== 'undefined' && typeof localStorage !== 'undefined') {
+    try {
+      localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(updated));
+    } catch (e) {
+      console.warn('LocalStorage limit reached when saving audit log:', e);
+    }
   }
   return updated;
 };

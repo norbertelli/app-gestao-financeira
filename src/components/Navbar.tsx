@@ -30,6 +30,7 @@ import {
 import { useAuth } from '../context/AuthContext';
 import { useSubscription } from '../context/SubscriptionContext';
 import { WhatsAppIcon, getWhatsAppUrl } from './WhatsAppSupport';
+import { RoleCrudTestModal } from './RoleCrudTestModal';
 
 
 
@@ -52,9 +53,11 @@ export const Navbar: React.FC<NavbarProps> = ({
   netWorth,
   urgentBillsCount = 0,
 }) => {
-  const { user, isCloudSynced, isAdmin, logout } = useAuth();
+  const { user, isCloudSynced, isAdmin, isSuperAdmin, userRole, switchRoleForTesting, logout } = useAuth();
   const { isPro, currentPlan } = useSubscription();
+
   const [showSettingsMenu, setShowSettingsMenu] = useState(false);
+  const [isRoleCrudModalOpen, setIsRoleCrudModalOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
 
   // Close dropdown when clicking outside
@@ -193,6 +196,16 @@ export const Navbar: React.FC<NavbarProps> = ({
               <span className="xs:hidden">Colar</span>
             </button>
 
+            {/* Testes CRUD (3 Perfis) Direct Button */}
+            <button
+              onClick={() => setIsRoleCrudModalOpen(true)}
+              className="hidden md:inline-flex items-center gap-1.5 px-3 py-1.5 bg-gradient-to-r from-emerald-500/10 via-teal-500/10 to-indigo-500/10 hover:from-emerald-500/20 hover:to-indigo-500/20 text-emerald-300 border border-emerald-500/40 rounded-xl text-xs font-bold transition-all hover:scale-[1.02] active:scale-[0.98] cursor-pointer"
+              title="Executar bateria de testes CRUD e RBAC para Usuário Comum, Administrador e Super Admin"
+            >
+              <ShieldCheck className="w-4 h-4 text-emerald-400" />
+              <span>Testes CRUD (3 Perfis)</span>
+            </button>
+
             {/* Configurações (Engrenagem) Button for Admin */}
             <div className="relative" ref={menuRef}>
               <button
@@ -227,15 +240,18 @@ export const Navbar: React.FC<NavbarProps> = ({
                       </div>
                       <span
                         className={`px-2 py-0.5 text-[10px] font-extrabold rounded-full shrink-0 ${
-                          isAdmin
+                          userRole === 'super_admin'
+                            ? 'bg-gradient-to-r from-amber-500/20 to-purple-500/20 text-amber-300 border border-amber-400/50'
+                            : userRole === 'admin'
                             ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40'
                             : 'bg-indigo-500/20 text-indigo-300 border border-indigo-500/40'
                         }`}
                       >
-                        {isAdmin ? 'ADMIN' : 'USUÁRIO'}
+                        {userRole === 'super_admin' ? 'SUPER ADMIN' : userRole === 'admin' ? 'ADMIN' : 'USUÁRIO'}
                       </span>
                     </div>
                   </div>
+
 
                   {/* Submenu Items */}
                   <div className="space-y-1">
@@ -299,6 +315,23 @@ export const Navbar: React.FC<NavbarProps> = ({
                         <span>Auditoria & Segurança</span>
                       </div>
                       {activeTab === 'security' && <Check className="w-4 h-4 text-white" />}
+                    </button>
+
+                    {/* Bateria de Testes CRUD (3 Perfis) */}
+                    <button
+                      onClick={() => {
+                        setIsRoleCrudModalOpen(true);
+                        setShowSettingsMenu(false);
+                      }}
+                      className="w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-semibold bg-gradient-to-r from-emerald-500/10 to-indigo-500/10 hover:from-emerald-500/20 hover:to-indigo-500/20 text-emerald-300 border border-emerald-500/30 transition-colors cursor-pointer"
+                    >
+                      <div className="flex items-center gap-2.5">
+                        <ShieldCheck className="w-4 h-4 text-emerald-400" />
+                        <span>Bateria Testes CRUD (3 Perfis)</span>
+                      </div>
+                      <span className="text-[9px] font-black uppercase px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/40">
+                        12 Testes
+                      </span>
                     </button>
 
                     {/* Planos & Assinatura */}
@@ -368,8 +401,60 @@ export const Navbar: React.FC<NavbarProps> = ({
                     </a>
 
 
+                    {/* Role Testing Quick Switcher */}
+                    <div className="pt-2 border-t border-slate-700/60 mt-1">
+                      <p className="text-[10px] uppercase font-black text-slate-400 px-1 mb-1.5 flex items-center justify-between">
+                        <span className="flex items-center gap-1">
+                          <Shield className="w-3 h-3 text-amber-400" />
+                          <span>Alternar Perfil (Teste):</span>
+                        </span>
+                      </p>
+                      <div className="grid grid-cols-3 gap-1">
+                        <button
+                          onClick={async () => {
+                            await switchRoleForTesting('user');
+                            setShowSettingsMenu(false);
+                          }}
+                          className={`py-1 px-1 text-[10px] font-bold rounded-lg border text-center transition-all cursor-pointer ${
+                            userRole === 'user'
+                              ? 'bg-indigo-600 text-white border-indigo-500 shadow-xs'
+                              : 'bg-slate-900/60 text-slate-300 border-slate-700 hover:bg-slate-700'
+                          }`}
+                        >
+                          Usuário
+                        </button>
+                        <button
+                          onClick={async () => {
+                            await switchRoleForTesting('admin');
+                            setShowSettingsMenu(false);
+                          }}
+                          className={`py-1 px-1 text-[10px] font-bold rounded-lg border text-center transition-all cursor-pointer ${
+                            userRole === 'admin'
+                              ? 'bg-emerald-600 text-white border-emerald-500 shadow-xs'
+                              : 'bg-slate-900/60 text-slate-300 border-slate-700 hover:bg-slate-700'
+                          }`}
+                        >
+                          Admin
+                        </button>
+                        <button
+                          onClick={async () => {
+                            await switchRoleForTesting('super_admin');
+                            setShowSettingsMenu(false);
+                          }}
+                          className={`py-1 px-1 text-[10px] font-bold rounded-lg border text-center transition-all cursor-pointer ${
+                            userRole === 'super_admin'
+                              ? 'bg-gradient-to-r from-amber-500 to-purple-600 text-white border-amber-400 shadow-xs'
+                              : 'bg-slate-900/60 text-slate-300 border-slate-700 hover:bg-slate-700'
+                          }`}
+                        >
+                          Super Admin
+                        </button>
+                      </div>
+                    </div>
+
                     {/* Logout Option */}
                     <div className="pt-1.5 border-t border-slate-700/60 mt-1">
+
                       <button
                         id="btn-navbar-logout"
                         onClick={async () => {
@@ -431,6 +516,11 @@ export const Navbar: React.FC<NavbarProps> = ({
           })}
         </nav>
       </div>
+
+      <RoleCrudTestModal
+        isOpen={isRoleCrudModalOpen}
+        onClose={() => setIsRoleCrudModalOpen(false)}
+      />
     </header>
   );
 };

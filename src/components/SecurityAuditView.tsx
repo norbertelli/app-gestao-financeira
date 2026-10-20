@@ -43,6 +43,8 @@ import {
   clearStressTestDataFromFirestore,
 } from '../services/firebase';
 import { formatCurrency, formatDateBR } from '../utils/financeUtils';
+import { RoleCrudTestModal } from './RoleCrudTestModal';
+
 
 interface SecurityAuditViewProps {
   accounts: BankAccount[];
@@ -92,7 +94,9 @@ export const SecurityAuditView: React.FC<SecurityAuditViewProps> = ({
   const [combinedLogs, setCombinedLogs] = useState<AuditLogItem[]>([]);
 
   // Security Scanner states
+  const [isRoleTestModalOpen, setIsRoleTestModalOpen] = useState<boolean>(false);
   const [isScanning, setIsScanning] = useState<boolean>(false);
+
   const [auditReport, setAuditReport] = useState<SecurityAuditReport>(() =>
     runComprehensiveSecurityAudit(accounts, bankTransactions, cards, cardTransactions, debts)
   );
@@ -355,6 +359,14 @@ export const SecurityAuditView: React.FC<SecurityAuditViewProps> = ({
 
           <div className="flex flex-wrap items-center gap-3">
             <button
+              onClick={() => setIsRoleTestModalOpen(true)}
+              className="inline-flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-emerald-500 via-teal-500 to-emerald-600 hover:from-emerald-400 hover:to-teal-500 text-slate-950 font-black rounded-xl text-xs sm:text-sm shadow-lg shadow-emerald-950/40 transition-all hover:scale-105 active:scale-95 cursor-pointer"
+            >
+              <ShieldCheck className="w-4 h-4 fill-slate-950" />
+              <span>Testes CRUD 3 Perfis (User/Admin/SuperAdmin)</span>
+            </button>
+
+            <button
               onClick={handleRunSecurityScan}
               disabled={isScanning}
               className="inline-flex items-center gap-2 px-4 py-2.5 bg-indigo-600 hover:bg-indigo-500 active:bg-indigo-700 text-white rounded-xl text-xs sm:text-sm font-bold shadow-lg shadow-indigo-600/30 transition-all cursor-pointer disabled:opacity-50"
@@ -371,6 +383,7 @@ export const SecurityAuditView: React.FC<SecurityAuditViewProps> = ({
               <span>Exportar Laudo JSON</span>
             </button>
           </div>
+
         </div>
 
         {/* Quick KPI Bar */}
@@ -1018,6 +1031,13 @@ export const SecurityAuditView: React.FC<SecurityAuditViewProps> = ({
           </div>
         </div>
       )}
+
+      {/* Modal Interativo de Testes CRUD 3 Perfis */}
+      <RoleCrudTestModal
+        isOpen={isRoleTestModalOpen}
+        onClose={() => setIsRoleTestModalOpen(false)}
+      />
     </div>
   );
 };
+

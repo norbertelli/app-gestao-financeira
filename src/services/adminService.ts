@@ -132,13 +132,18 @@ export const updateSubscriberPlan = async (
 
   try {
     const userRef = doc(db, 'users', userId);
-    await updateDoc(userRef, {
-      subscriptionPlan: planId,
-      subscriptionStatus: status,
-      isPro: planId !== 'FREE',
-      subscriptionExpiresAt: expiresAt.toISOString(),
-      subscriptionUpdatedAt: new Date().toISOString(),
-    });
+    await setDoc(
+      userRef,
+      {
+        userId,
+        subscriptionPlan: planId,
+        subscriptionStatus: status,
+        isPro: planId !== 'FREE',
+        subscriptionExpiresAt: expiresAt.toISOString(),
+        subscriptionUpdatedAt: new Date().toISOString(),
+      },
+      { merge: true }
+    );
 
     const subRef = doc(db, 'users', userId, 'subscriptions', 'current');
     await setDoc(
@@ -164,10 +169,15 @@ export const updateSubscriberPhone = async (
 ): Promise<void> => {
   try {
     const userRef = doc(db, 'users', userId);
-    await updateDoc(userRef, {
-      phone: phone.trim(),
-      updatedAt: new Date().toISOString(),
-    });
+    await setDoc(
+      userRef,
+      {
+        userId,
+        phone: phone.trim(),
+        updatedAt: new Date().toISOString(),
+      },
+      { merge: true }
+    );
   } catch (e) {
     console.warn('Error updating subscriber phone:', e);
   }

@@ -14,13 +14,14 @@ import {
   Smartphone,
   Shield,
   Phone,
+  Crown,
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { WhatsAppSupportButton, FloatingWhatsAppSupport } from './WhatsAppSupport';
 
-
 export const AuthView: React.FC = () => {
-  const { loginWithGoogle, loginWithEmail, registerWithEmail, loginAsAdmin, loading } = useAuth();
+  const { loginWithGoogle, loginWithEmail, registerWithEmail, loginAsAdmin, loginAsSuperAdmin, loading } = useAuth();
+
 
   const [authMode, setAuthMode] = useState<'login' | 'register' | 'admin'>('login');
   const [email, setEmail] = useState('');
@@ -292,7 +293,40 @@ export const AuthView: React.FC = () => {
                   <ShieldCheck className="w-4 h-4" />
                   <span>{isSubmitting ? 'Autenticando...' : 'Entrar como Administrador'}</span>
                 </button>
+
+                <div className="relative my-3">
+                  <div className="absolute inset-0 flex items-center">
+                    <div className="w-full border-t border-slate-800" />
+                  </div>
+                  <div className="relative flex justify-center text-xs">
+                    <span className="bg-slate-900 px-3 text-slate-500 font-medium">
+                      ou credenciais master
+                    </span>
+                  </div>
+                </div>
+
+                <button
+                  id="btn-submit-superadmin"
+                  type="button"
+                  onClick={async () => {
+                    setErrorMessage(null);
+                    setIsSubmitting(true);
+                    try {
+                      await loginAsSuperAdmin();
+                    } catch (e: any) {
+                      setErrorMessage(e.message || 'Falha no login Super Admin.');
+                    } finally {
+                      setIsSubmitting(false);
+                    }
+                  }}
+                  disabled={isSubmitting || loading}
+                  className="w-full py-3 px-4 bg-gradient-to-r from-amber-500 to-purple-600 hover:from-amber-400 hover:to-purple-500 active:from-amber-600 active:to-purple-700 text-white rounded-xl font-black text-sm transition-all shadow-lg shadow-purple-900/30 flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
+                >
+                  <Crown className="w-4 h-4 text-amber-200" />
+                  <span>Entrar como Super Administrador (Master)</span>
+                </button>
               </>
+
             ) : (
               <>
                 {authMode === 'register' && (
@@ -393,9 +427,42 @@ export const AuthView: React.FC = () => {
                   </span>
                   <ArrowRight className="w-4 h-4" />
                 </button>
+
+                <div className="relative my-4">
+                  <div className="absolute inset-0 flex items-center">
+                    <div className="w-full border-t border-slate-800" />
+                  </div>
+                  <div className="relative flex justify-center text-xs">
+                    <span className="bg-slate-900 px-3 text-slate-500 font-medium">
+                      ou acesse para experimentar
+                    </span>
+                  </div>
+                </div>
+
+                <button
+                  id="btn-guest-login"
+                  type="button"
+                  onClick={async () => {
+                    setErrorMessage(null);
+                    setIsSubmitting(true);
+                    try {
+                      await loginWithEmail('visitante@finflow.app', 'finflow2026');
+                    } catch (e: any) {
+                      setErrorMessage(e.message || 'Falha no acesso.');
+                    } finally {
+                      setIsSubmitting(false);
+                    }
+                  }}
+                  disabled={isSubmitting || loading}
+                  className="w-full py-2.5 px-4 bg-slate-800/80 hover:bg-slate-800 border border-slate-700 text-slate-300 hover:text-white rounded-xl font-semibold text-xs transition-all flex items-center justify-center gap-2 cursor-pointer"
+                >
+                  <Sparkles className="w-3.5 h-3.5 text-amber-400" />
+                  <span>Entrar como Visitante (Teste Rápido)</span>
+                </button>
               </>
             )}
           </form>
+
 
           {/* Botão de Suporte WhatsApp no Login */}
           <div className="pt-4 border-t border-slate-800/80 mt-4">

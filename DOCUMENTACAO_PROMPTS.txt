@@ -1,162 +1,97 @@
 ================================================================================
            DOCUMENTAÇÃO DE PROMPTS - GESTÃO FINANCEIRA & OPEN FINANCE
 ================================================================================
-Projeto: Gestão Financeira Pessoal, Contas a Pagar, Extratos e Open Finance
-Tecnologias: React 18, TypeScript, Tailwind CSS, Lucide Icons, Recharts, Vite, Gemini API
+Projeto: FinFlow - Gestão Financeira Pessoal, Contas a Pagar, Extratos com IA & Gateway Asaas
+Tecnologias: React 18, TypeScript, Tailwind CSS, Lucide Icons, Recharts, Vite, Gemini API, Asaas API V3, Firebase
 Arquivo: DOCUMENTACAO_PROMPTS.txt
+Versão: 3.0
 ================================================================================
 
 --------------------------------------------------------------------------------
-1. VISÃO GERAL DO PROJETO
+1. VISÃO GERAL DO HISTÓRICO DE PROMPTS
 --------------------------------------------------------------------------------
-Esta documentação reúne o histórico completo de prompts utilizados para a criação,
-estruturação, refinamento de regras de negócio, correções de bugs e adição de
-novos recursos no aplicativo de Gestão Financeira.
-
-O aplicativo engloba:
-- Dashboard Geral com KPIs, gráficos de fluxo de caixa, alocação e alertas.
-- Módulo de Contas Bancárias e Extrato Unificado com conciliação.
-- Módulo de Cartões de Crédito e Faturas Parceladas.
-- Módulo de Investimentos (Renda Fixa, Ações, FIIs, Cripto).
-- Módulo de Futuros Pagamentos / Contas a Pagar com liquidação bancária.
-- Sistema de Verificação Diária e Alertas de Vencimento (< 3 dias).
-- Leitor Inteligente de Extratos com IA Gemini (Smart Statement Reader).
-- Módulo de Open Finance e Categorização de Despesas/Receitas.
+Esta documentação reúne o histórico completo e cronológico de prompts utilizados
+para a concepção, desenvolvimento, integração de APIs, regras de negócio, correções
+e lançamento do FinFlow.
 
 ================================================================================
-2. SEQUÊNCIA CRONOLÓGICA DE PROMPTS UTILIZADOS
+2. SEQUÊNCIA CRONOLÓGICA DE PROMPTS E EVOLUÇÃO
 ================================================================================
 
 --------------------------------------------------------------------------------
-FASE 1: CRIAÇÃO DA ARQUITETURA INICIAL E DESIGN DO SISTEMA
+PROMPTS 1 A 6: CRIAÇÃO E CONSOLIDAÇÃO DA BASE FINANCEIRA
 --------------------------------------------------------------------------------
-
-[PROMPT 1.1 - ESTRUTURAÇÃO BASE DO APP FINANCEIRO]
-"Crie um aplicativo completo de Gestão Financeira em React com TypeScript e Tailwind CSS.
-O sistema deve ter navegação por abas com os seguintes módulos:
-1. Dashboard Geral (Patrimônio Líquido, Saldo Total em Contas, Faturas de Cartão, Total em Investimentos, Gráficos de Fluxo de Caixa e Distribuição de Gastos).
-2. Contas Bancárias (Gestão de múltiplas contas, extrato com receitas/despesas/transferências).
-3. Cartões de Crédito (Limite, data de fechamento e vencimento, compras parceladas e fatura atual).
-4. Investimentos (Renda Fixa, Ações, Fundos, Criptoativos com valor aplicado e atual).
-5. Contas a Pagar / Futuros Pagamentos (Agendamento de compromissos futuros).
-6. Leitor Inteligente de Extratos com Gemini API para extrair transações de texto/imagem/OFX.
-7. Open Finance (Conexão simulada com bancos e sincronização).
-Utilize design moderno, suporte a tema claro e escuro, ícones do Lucide React e gráficos do Recharts."
-
-[PROMPT 1.2 - TIPAGEM TYPESCRIPT E DADOS INICIAIS REALISTAS]
-"Estruture o arquivo `src/types.ts` com interfaces completas para:
-- BankAccount, BankTransaction
-- CreditCard, CreditCardInvoice, CreditCardTransaction
-- Investment, InvestmentTransaction
-- FuturePayment (com id, dueDate, description, expectedAmount, category, notes, status: 'Pendente' | 'Pago' | 'Em Aberto')
-- Category, OpenFinanceConnection
-Crie o arquivo `src/data/initialData.ts` com dados brasileiros realistas (R$, datas formato BR, instituições como Nubank, Itaú, Inter, XP)."
+- Prompt 1: Criação da interface inicial com suporte a Contas Bancárias e Cartões de Crédito.
+- Prompt 2: Adição do Cheque Especial / Limite de Crédito com cálculo do Saldo Real e Saldo Total Disponível.
+- Prompt 3: Implementação de compras parceladas com atalhos de 1ª fatura (Mês Corrente, Próximo Mês, Auto Fechamento).
+- Prompt 4: Seção de Faturas do Mês Corrente no Dashboard com mini cards por cartão e busca rápida.
+- Prompt 5: Módulo de Dívidas & Empréstimos com credor, valor contratado, amortização e baixa integrada em conta bancária.
+- Prompt 6: Carteira de Investimentos (Renda Fixa, Ações, FIIs, Fundos, Cripto) com lançamentos de rendimentos e aportes.
 
 --------------------------------------------------------------------------------
-FASE 2: MÓDULO DE CONTAS A PAGAR & FUTUROS PAGAMENTOS
+PROMPTS 7 A 10: IA GEMINI, ALERTAS E NUVEM FIRESTORE
 --------------------------------------------------------------------------------
-
-[PROMPT 2.1 - CRIAÇÃO DA TELA DE FUTUROS PAGAMENTOS]
-"Crie o componente `FuturePaymentsView.tsx` para gerenciar compromissos financeiros futuros:
-- Tabela com Data de Vencimento, Descrição da Conta/Boleto, Categoria, Observações e Valor Previsto.
-- Cards superiores com resumo: Total a Pagar Pendente, Contas Bancárias Disponíveis e Próximo Vencimento.
-- Ações na tabela: Botão 'Pagar' (para liquidar o compromisso), Botão 'Editar' (para alterar dados) e Botão 'Excluir'.
-- Modal de 'Novo Futuro Pagamento' para cadastrar novos boletos e contas agendadas."
+- Prompt 7: Criação do Leitor Inteligente de Extratos com Google Gemini (leitura de texto e arquivos com categorização automática).
+- Prompt 8: Sistema de Verificação Diária e Alertas de Contas a Pagar com vencimento em até 3 dias.
+- Prompt 9: Integração com Firebase Firestore e autenticação em nuvem para sincronização multi-dispositivo em tempo real.
+- Prompt 10: Módulo de Auditoria, Segurança e Testes Massivos de Carga (Stress Testing com até 2.000 transações sintéticas).
 
 --------------------------------------------------------------------------------
-FASE 3: REFINAMENTO DE REGRAS DE NEGÓCIO E CORREÇÕES (BUG FIXES)
+PROMPTS 11 A 13: GATEWAY DE PAGAMENTOS ASAAS & MONETIZAÇÃO
 --------------------------------------------------------------------------------
+- Prompt 11: "Integrar o gateway Asaas para cobrança dos planos com PIX, Cartão e Boleto".
+  - Implementação das rotas serverless /api/asaas/create-checkout, /api/asaas/check-status e /api/asaas/webhook.
+  - Renderização de QR Code PIX dinâmico com formato oficial BRCode do Banco Central e botão Copiar Código.
+  - Tela de Planos & Preços (SubscriptionView) com comparativo detalhado e FAQ.
 
-[PROMPT 3.1 - REGRA DE STATUS DINÂMICO (PENDENTE VS EM ABERTO)]
-"Ajuste a regra de status dos futuros pagamentos (contas a pagar):
-- Se a data de vencimento (dueDate) for menor que a data atual (hoje), o status deve ser 'Pendente' (Vencido).
-- Se a data de vencimento for igual ou maior que a data atual (hoje), o status deve ser 'Em Aberto' (A Vencer).
-- Adicione a coluna 'Status' na tabela de futuros pagamentos com badges visuais coloridos (Vermelho para Pendente, Âmbar para Em Aberto, Verde para Pago).
-- Atualize os cards de KPI no topo da tela para separar os totais de 'Pendente (Vencidos)' e 'Em Aberto (A Vencer)'."
+- Prompt 12: "Implementar travas no código para o plano gratuito e convite para o PRO".
+  - Plano Grátis limitado a 2 contas bancárias, 2 cartões de crédito e 30 transações/mês.
+  - Criação do modal UpgradePromptModal.tsx para bloqueio automático ao atingir os limites.
+  - Sincronização de status de assinatura no Firestore (users/{userId}/subscriptions/current).
 
-[PROMPT 3.2 - CORREÇÃO DE DATA SUPERIOR E BOTÃO SALVAR ALTERAÇÕES]
-"quando a data é superior a data de hoje continua como pendente, e ao tentar alterar a tabela de pagamento futuro o botão salvar alterações não funciona"
-
-Ações executadas neste prompt:
-1. Normalização do cálculo de datas usando formato 'YYYY-MM-DD' para evitar problemas de timezone.
-2. Correção das props `onEditPayment` / `onEditFuturePayment` e `onAddPayment` / `onAddFuturePayment` no componente `FuturePaymentsView` e `App.tsx`.
-3. Ajuste do formulário de edição para recalcular dinamicamente o status no momento do salvamento e propagar o estado para a lista principal.
-
-[PROMPT 3.3 - INTEGRAÇÃO DE LIQUIDAÇÃO COM EXTRATO BANCÁRIO]
-"ao confirmar o pagamento em liquidar e pagar conta ,o valor não esta passando para o extrato do banco correspondente e continua em transações futuras"
-
-Ações executadas neste prompt:
-1. Ajuste da assinatura da função `handlePayPayment` no `App.tsx` para aceitar os parâmetros do modal de liquidação (data do pagamento, conta bancária de débito, valor efetivo pago).
-2. Criação automática de transação de débito no extrato da conta bancária escolhida com valor negativo (`-R$ ...`), categoria correspondente e descrição `[Pago] ...`.
-3. Remoção imediata do compromisso da lista de pagamentos futuros (ou marcação definitiva de status), impedindo que continue duplicado como pendência.
+- Prompt 13: "Criar ambiente de teste prático de checkout".
+  - Criação da aba de Teste Prático em SubscriptionView para simulação de PIX aprovado e alternância rápida entre plano Grátis e PRO.
 
 --------------------------------------------------------------------------------
-FASE 4: SISTEMA DE MONITORAMENTO DIÁRIO E NOTIFICAÇÕES DE VENCIMENTO
+PROMPTS 14 A 16: SUPORTE WHATSAPP DINÂMICO & PAINEL DE ASSINANTES
 --------------------------------------------------------------------------------
+- Prompt 14: "Corrigir o número de telefone que foi errado 55 11 932058703, colocar telefone e email no cadastro, buscar o whatsapp do campo telefone do admin para suporte, não exibir os números na tela e colocar botão na tela de login".
+  - Atualização do número oficial para 5511932058703.
+  - Consulta dinâmica do número no Firestore (system/admin_support).
+  - Remoção de números brutos dos botões, mantendo visual limpo ("Suporte ou Ajuda", "Atendimento Online").
+  - Inclusão do campo Telefone/WhatsApp no formulário de cadastro de novos usuários.
+  - Adição do botão de suporte na tela de Login/Cadastro (AuthView) e widget flutuante.
 
-[PROMPT 4.1 - MONITORAMENTO DIÁRIO DE CONTAS A VENCER (< 3 DIAS)]
-"Implemente um sistema de agendamento de tarefas ou verificação diária que monitore o array 'futurePayments'. Adicione uma lógica para verificar se o vencimento está a menos de 3 dias e envie uma notificação visual (badge ou modal) no Dashboard para avisar o usuário sobre a pendência."
+- Prompt 15: "Montar a tela de gestão de assinantes para o administrador".
+  - Criação do componente AdminSubscribersView.tsx com métricas em tempo real (Total de Usuários, Assinantes PRO, MRR e Taxa de Conversão).
+  - Tabela com busca, filtros por plano e status, alteração manual de planos, edição de telefone e botão de contato direto no WhatsApp.
+  - Atualização das regras do Firestore (firestore.rules) com a função isAdmin() permitindo que o administrador liste e gerencie usuários.
 
-Ações executadas neste prompt:
-1. Implementação da rotina de cálculo de diferença de dias (`getDaysDiff`) entre a data atual e a data de vencimento de cada item não pago (`status !== 'Pago'`).
-2. Filtragem de contas com vencimento <= 3 dias (incluindo vencimentos de hoje e atrasados).
-3. Criação de Banner de Alerta Visual no topo do Dashboard com animações e resumo da conta mais urgente.
-4. Criação de Badge pulsante com sino de notificação e contador no cabeçalho do Dashboard.
-5. Criação de Modal Interativo de 'Alertas de Vencimento' exibindo lista detalhada com contagem regressiva em dias, valores e atalho direto para a aba de liquidação.
+--------------------------------------------------------------------------------
+PROMPTS 16 A 18: DEPLOY VERCEL, CORREÇÃO DE WEBSOCKET E CHAVES DE PRODUÇÃO
+--------------------------------------------------------------------------------
+- Prompt 16: "O que deve ser feito agora com github e vercel atualizado".
+  - Configuração do vercel.json com rewrites para o SPA Vite e rotas serverless.
+  - Criação das funções serverless dedicadas em /api/asaas/* e /api/health.ts.
+  - Inicialização do repositório Git local na branch main com .gitignore protegendo credenciais.
 
-[PROMPT 4.2 - ESTILIZAÇÃO VISUAL DE VALORES NEGATIVOS NOS EXTRATOS (VERMELHO NEGRITO)]
-"nos extratos os valores negativos devem ficar em vermelho negrito"
+- Prompt 17: "Error [vite] failed to connect to websocket: WebSocket closed without opened".
+  - Correção no server.ts configurando hmr: false no createViteServer para silenciar mensagens de WebSocket no ambiente de nuvem Cloud Run / AI Studio.
 
-Ações executadas neste prompt:
-1. Atualização do componente `BankAccountsView.tsx` para aplicar classes de estilo de destaque (`font-bold text-red-600 dark:text-red-500`) em todas as transações com valores negativos (débitos/despesas).
-2. Atualização do componente `StatementAuditModal.tsx` no extrato completo de conferência bancária para destacar saídas em vermelho negrito.
-3. Atualização do componente `SmartReaderView.tsx` (leitor inteligente) para exibir despesas identificadas com formatação em vermelho negrito.
+- Prompt 18: "Configuração das chaves oficiais ASAAS_API_KEY, ASAAS_ENV, ASAAS_WEBHOOK_TOKEN e GEMINI_API_KEY".
+  - Aplicação da chave de produção do Asaas ($aact_prod_...).
+  - Teste de conexão bem-sucedido na API do Asaas retornando o saldo da conta.
+  - Configuração do token de segurança do webhook com validação do header asaas-access-token.
+  - Aplicação e validação da chave da Google Gemini API no endpoint /api/parse-statement.
 
-[PROMPT 4.3 - SALDOS NEGATIVOS DE BANCOS E FATURAS DE CARTÕES EM VERMELHO NEGRITO]
-"os saldos negativos dos bancos e cartões devem estar também em vermelho negrito"
+- Prompt 19: "Quais os próximos passos que devo fazer para divulgar o app".
+  - Definição de estratégia Go-To-Market em 4 etapas (Validação com conhecidos, Contadores parceiros, Vídeos de demonstração da IA e Tráfego Pago).
+  - Adição de tags OpenGraph, Twitter Card e SEO no index.html para preview rico ao compartilhar no WhatsApp e redes sociais.
+  - Inclusão do botão "Indicar no WhatsApp" no cabeçalho do Dashboard.
 
-Ações executadas neste prompt:
-1. Atualização dos cards e tabelas de Contas Bancárias (`BankAccountsView.tsx`) para exibir saldos finais calculados negativos em vermelho negrito (`text-red-500 font-bold`).
-2. Atualização dos cards de Cartões de Crédito e Faturas (`CreditCardsView.tsx` e `DashboardView.tsx`) para apresentar o valor das faturas e dívidas futuras projetadas em vermelho negrito com sinal negativo explícito (`-R$ ...`).
-3. Ajuste no Dashboard Geral para destacar os KPIs de Saldo Total dos Bancos, Faturas/Parcelas e Patrimônio Líquido com badges e tipografia em vermelho negrito sempre que estiverem negativos ou representarem dívidas.
-4. Ajuste no modal de auditoria (`StatementAuditModal.tsx`) para evidenciar faturas e saldos finais devedores em vermelho negrito.
+- Prompt 20: "Atualizar arquivo .md e .txt de todo o projeto".
+  - Atualização completa de README.md, DOCUMENTACAO_APP.md, DOCUMENTACAO_COMPLETA_PROJETO.txt e DOCUMENTACAO_PROMPTS.txt refletindo todas as funcionalidades da versão 3.0.
 
 ================================================================================
-3. PROMPTS RECOMENDADOS PARA REPLICAÇÃO E EXPANSÃO FUTURA
-================================================================================
-
-Abaixo estão templates de prompts prontos para caso deseje expandir ou replicar
-as funcionalidades em novos módulos:
-
-[TEMPLATE 1 - INTEGRAÇÃO DE NOTIFICAÇÃO VIA EMAIL/WHATSAPP]
-"Adicione um serviço de lembretes automáticos para compromissos com vencimento em menos de 3 dias. Crie uma aba de configurações de notificações onde o usuário pode cadastrar e-mail ou webhook para receber alertas de contas a pagar."
-
-[TEMPLATE 2 - EXPORTAÇÃO DE RELATÓRIOS EM PDF / EXCEL]
-"Crie um botão de exportação no Extrato Bancário e na tela de Futuros Pagamentos que gere um arquivo PDF formatado e uma planilha Excel (XLSX/CSV) contendo os filtros selecionados, totais consolidados e histórico de lançamentos."
-
-[TEMPLATE 3 - RECORRÊNCIA AUTOMÁTICA DE CONTAS (MENSAL/ANUAL)]
-"Adicione suporte a despesas recorrentes no módulo de Futuros Pagamentos. O usuário deve poder definir se uma conta é 'Única', 'Mensal' ou 'Anual', gerando automaticamente os lançamentos dos meses subsequentes."
-
-[TEMPLATE 4 - ORÇAMENTO POR CATEGORIA COM METAS]
-"Crie uma barra de progresso visual para cada categoria no Dashboard indicando o limite de orçamento mensal definido vs o valor já gasto no mês atual, exibindo alertas quando atingir 80% e 100% do limite."
-
-================================================================================
-4. SUMÁRIO DA ESTRUTURA DE ARQUIVOS DO PROJETO
-================================================================================
-- /src/App.tsx                     -> Componente raiz, gerenciamento de estado global e handlers de persistência.
-- /src/types.ts                    -> Definições de tipos TypeScript (BankAccount, FuturePayment, CreditCard, etc.).
-- /src/data/initialData.ts         -> Dados iniciais de demonstração (contas, cartões, investimentos, futuros pagamentos).
-- /src/components/
-  ├── DashboardView.tsx            -> Visão geral, KPIs patrimoniais, gráficos e sistema de alertas (< 3 dias).
-  ├── FuturePaymentsView.tsx       -> Tela de contas a pagar, filtros de status (Pendente/Em Aberto) e modais de liquidação.
-  ├── BankAccountsView.tsx         -> Extratos bancários, saldo consolidado, filtros por período e conciliação.
-  ├── CreditCardsView.tsx          -> Gestão de cartões de crédito, limites, faturas e parcelamentos.
-  ├── InvestmentsView.tsx          -> Carteira de investimentos e alocação por classe de ativos.
-  ├── SmartReaderView.tsx          -> Leitor inteligente de extratos com OCR e Gemini API.
-  ├── OpenFinanceView.tsx          -> Hub de conexões bancárias Open Finance.
-  ├── CategoriesView.tsx           -> Gestão de categorias de receitas e despesas.
-  └── StatementAuditModal.tsx      -> Modal de auditoria e revisão de transações importadas.
-
-================================================================================
-FIM DO DOCUMENTO
+FIM DO HISTÓRICO DE PROMPTS
 ================================================================================

@@ -44,7 +44,9 @@ import {
   Search,
   Receipt,
   X,
+  Share2,
 } from 'lucide-react';
+
 import {
   ResponsiveContainer,
   BarChart,
@@ -236,6 +238,20 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
 
             {/* Botão de Suporte ou Ajuda no WhatsApp */}
             <WhatsAppSupportButton variant="banner" label="Suporte ou Ajuda" />
+
+            {/* Botão Indicar / Compartilhar no WhatsApp */}
+            <button
+              onClick={() => {
+                const shareText = `Olá! Conheça o FinFlow, o sistema para gestão inteligente de contas bancárias, cartões de crédito e extratos com IA:\n\n${typeof window !== 'undefined' ? window.location.origin : 'https://finflow.app'}`;
+                window.open(`https://wa.me/?text=${encodeURIComponent(shareText)}`, '_blank', 'noopener,noreferrer');
+              }}
+              className="inline-flex items-center gap-2 px-3 py-2.5 sm:px-4 sm:py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold rounded-xl text-xs sm:text-sm border border-slate-700 transition-all hover:scale-105 active:scale-95 cursor-pointer shadow-md"
+              title="Indicar o FinFlow para amigos e contatos no WhatsApp"
+            >
+              <Share2 className="w-4 h-4 text-emerald-400" />
+              <span>Indicar no WhatsApp</span>
+            </button>
+
 
             <button
               onClick={onOpenSmartReader}

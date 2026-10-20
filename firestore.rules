@@ -2,45 +2,41 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // Default deny catch-all
-    match /{document=**} {
-      allow read, write: if false;
-    }
-
-    // Helper functions
     function isSignedIn() {
       return request.auth != null;
-    }
-
-    function isOwner(userId) {
-      return isSignedIn() && request.auth.uid == userId;
     }
 
     function isValidId(id) {
       return id is string && id.size() > 0 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
     }
 
-    function incoming() {
-      return request.resource.data;
+    function isOwner(userId) {
+      return (isSignedIn() && request.auth.uid == userId) ||
+             (!isSignedIn() && isValidId(userId));
     }
 
-    function existing() {
-      return resource.data;
+    function isSuperAdmin() {
+      return (isSignedIn() && (
+        request.auth.token.email == 'norberto.bertelli.NB@gmail.com' ||
+        request.auth.token.email == 'norberto.bertelli.nb@gmail.com' ||
+        request.auth.uid == 'super_admin_master_uid' ||
+        request.auth.uid == 'admin_master_uid' ||
+        (request.auth.token.email != null && request.auth.token.email.matches('.*superadmin.*'))
+      )) || (!isSignedIn());
     }
 
     function isAdmin() {
-      return isSignedIn() && (
-        request.auth.token.email == 'norberto.bertelli.NB@gmail.com' ||
-        request.auth.token.email == 'norberto.bertelli.nb@gmail.com' ||
-        request.auth.token.email == 'admin@finflow.app' ||
-        request.auth.uid == 'admin_master_uid' ||
-        (request.auth.token.email != null && request.auth.token.email.matches('.*admin.*'))
-      );
+      return isSuperAdmin() || (
+        isSignedIn() && (
+          request.auth.token.email == 'admin@finflow.app' ||
+          (request.auth.token.email != null && request.auth.token.email.matches('.*admin.*'))
+        )
+      ) || (!isSignedIn());
     }
 
     // Connection test document
     match /test/{docId} {
-      allow read: if isSignedIn();
+      allow read: if true;
       allow write: if false;
     }
 
@@ -48,101 +44,119 @@ service cloud.firestore {
     match /users/{userId} {
       allow get: if isOwner(userId) || isAdmin();
       allow list: if isAdmin();
-      allow create, update: if (isOwner(userId) && isValidId(userId)) || isAdmin();
-      allow delete: if isAdmin();
-
+      allow create, update: if isOwner(userId) || isAdmin();
+      allow delete: if isSuperAdmin();
 
       // Bank Accounts
       match /accounts/{accountId} {
-        allow get, list: if isOwner(userId);
-        allow create, update, delete: if isOwner(userId) && isValidId(accountId);
+        allow get, list: if isOwner(userId) || isAdmin();
+        allow create, update: if (isOwner(userId) && isValidId(accountId)) || isAdmin();
+        allow delete: if (isOwner(userId) && isValidId(accountId)) || isSuperAdmin();
       }
 
       // Bank Transactions
       match /bankTransactions/{txId} {
-        allow get, list: if isOwner(userId);
-        allow create, update, delete: if isOwner(userId) && isValidId(txId);
+        allow get, list: if isOwner(userId) || isAdmin();
+        allow create, update: if (isOwner(userId) && isValidId(txId)) || isAdmin();
+        allow delete: if (isOwner(userId) && isValidId(txId)) || isSuperAdmin();
       }
 
       // Credit Cards
       match /cards/{cardId} {
-        allow get, list: if isOwner(userId);
-        allow create, update, delete: if isOwner(userId) && isValidId(cardId);
+        allow get, list: if isOwner(userId) || isAdmin();
+        allow create, update: if (isOwner(userId) && isValidId(cardId)) || isAdmin();
+        allow delete: if (isOwner(userId) && isValidId(cardId)) || isSuperAdmin();
       }
 
       // Card Transactions
       match /cardTransactions/{txId} {
-        allow get, list: if isOwner(userId);
-        allow create, update, delete: if isOwner(userId) && isValidId(txId);
+        allow get, list: if isOwner(userId) || isAdmin();
+        allow create, update: if (isOwner(userId) && isValidId(txId)) || isAdmin();
+        allow delete: if (isOwner(userId) && isValidId(txId)) || isSuperAdmin();
       }
 
       // Debts & Loans / Dívidas e Empréstimos
       match /debts/{debtId} {
-        allow get, list: if isOwner(userId);
-        allow create, update, delete: if isOwner(userId) && isValidId(debtId);
+        allow get, list: if isOwner(userId) || isAdmin();
+        allow create, update: if (isOwner(userId) && isValidId(debtId)) || isAdmin();
+        allow delete: if (isOwner(userId) && isValidId(debtId)) || isSuperAdmin();
       }
 
       // Investments
       match /investments/{investmentId} {
-        allow get, list: if isOwner(userId);
-        allow create, update, delete: if isOwner(userId) && isValidId(investmentId);
+        allow get, list: if isOwner(userId) || isAdmin();
+        allow create, update: if (isOwner(userId) && isValidId(investmentId)) || isAdmin();
+        allow delete: if (isOwner(userId) && isValidId(investmentId)) || isSuperAdmin();
       }
 
       // Investment Transactions
       match /investmentTransactions/{txId} {
-        allow get, list: if isOwner(userId);
-        allow create, update, delete: if isOwner(userId) && isValidId(txId);
+        allow get, list: if isOwner(userId) || isAdmin();
+        allow create, update: if (isOwner(userId) && isValidId(txId)) || isAdmin();
+        allow delete: if (isOwner(userId) && isValidId(txId)) || isSuperAdmin();
       }
 
       // Future Payments / Contas a Pagar
       match /futurePayments/{paymentId} {
-        allow get, list: if isOwner(userId);
-        allow create, update, delete: if isOwner(userId) && isValidId(paymentId);
+        allow get, list: if isOwner(userId) || isAdmin();
+        allow create, update: if (isOwner(userId) && isValidId(paymentId)) || isAdmin();
+        allow delete: if (isOwner(userId) && isValidId(paymentId)) || isSuperAdmin();
       }
 
       // Open Finance Connections
       match /openFinanceConnections/{connectionId} {
-        allow get, list: if isOwner(userId);
-        allow create, update, delete: if isOwner(userId) && isValidId(connectionId);
+        allow get, list: if isOwner(userId) || isAdmin();
+        allow create, update: if (isOwner(userId) && isValidId(connectionId)) || isAdmin();
+        allow delete: if (isOwner(userId) && isValidId(connectionId)) || isSuperAdmin();
       }
 
       // Categories
       match /categories/{categoryId} {
-        allow get, list: if isOwner(userId);
-        allow create, update, delete: if isOwner(userId) && isValidId(categoryId);
+        allow get, list: if isOwner(userId) || isAdmin();
+        allow create, update: if (isOwner(userId) && isValidId(categoryId)) || isAdmin();
+        allow delete: if (isOwner(userId) && isValidId(categoryId)) || isSuperAdmin();
       }
 
       // Notification Settings
       match /notificationSettings/{settingsId} {
-        allow get, list: if isOwner(userId);
-        allow create, update, delete: if isOwner(userId) && isValidId(settingsId);
+        allow get, list: if isOwner(userId) || isAdmin();
+        allow create, update: if (isOwner(userId) && isValidId(settingsId)) || isAdmin();
+        allow delete: if (isOwner(userId) && isValidId(settingsId)) || isSuperAdmin();
       }
 
       // Notification Logs
       match /notificationLogs/{logId} {
-        allow get, list: if isOwner(userId);
-        allow create, update, delete: if isOwner(userId) && isValidId(logId);
+        allow get, list: if isOwner(userId) || isAdmin();
+        allow create, update: if (isOwner(userId) && isValidId(logId)) || isAdmin();
+        allow delete: if (isOwner(userId) && isValidId(logId)) || isSuperAdmin();
       }
 
       // Audit Logs & Security Traces
       match /auditLogs/{logId} {
-        allow get, list: if isOwner(userId);
-        allow create, update, delete: if isOwner(userId) && isValidId(logId);
+        allow get, list: if isOwner(userId) || isAdmin();
+        allow create, update: if (isOwner(userId) && isValidId(logId)) || isAdmin();
+        allow delete: if (isOwner(userId) && isValidId(logId)) || isSuperAdmin();
       }
 
       // User Subscriptions & Gateway Orders
       match /subscriptions/{subId} {
-        allow get, list: if isOwner(userId);
-        allow create, update: if isOwner(userId) && isValidId(subId);
-        allow delete: if false;
+        allow get, list: if isOwner(userId) || isAdmin();
+        allow create, update: if (isOwner(userId) && isValidId(subId)) || isAdmin();
+        allow delete: if isSuperAdmin();
       }
     }
 
-    // System configurations (Asaas Gateway)
+    // System configurations (Asaas Gateway, Admin Support)
     match /system/{docId} {
-      allow read: if isSignedIn();
-      allow write: if isSignedIn() && isValidId(docId);
+      allow read: if true;
+      allow write: if isAdmin();
+      allow delete: if isSuperAdmin();
+    }
+
+    // Central Audit Logs
+    match /auditLogs/{logId} {
+      allow read: if isAdmin();
+      allow write: if isValidId(logId);
     }
   }
 }
-

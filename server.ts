@@ -154,8 +154,9 @@ app.post("/api/asaas/create-checkout", async (req, res) => {
   try {
     const { userId, userEmail, userName, userCpfCnpj, userPhone, planId, billingType, config } = req.body;
     const apiKey = config?.apiKey || process.env.ASAAS_API_KEY;
-    const isProd = config?.environment === 'production' || process.env.ASAAS_ENV === 'production';
+    const isProd = config?.environment === 'production' || process.env.ASAAS_ENV === 'production' || Boolean(apiKey && apiKey.includes('prod'));
     const baseUrl = isProd ? "https://api.asaas.com/v3" : "https://sandbox.asaas.com/api/v3";
+
 
     const planPrices: Record<string, number> = {
       FREE: 0,
@@ -189,10 +190,28 @@ app.post("/api/asaas/create-checkout", async (req, res) => {
         });
 
         const custData = await custRes.json();
-        const asaasCustomerId = custData.id;
+        let asaasCustomerId = custData.id;
+
+        // If customer already exists with this email, fetch existing customer ID
+        if (!asaasCustomerId && userEmail) {
+          try {
+            const findRes = await fetch(`${baseUrl}/customers?email=${encodeURIComponent(userEmail)}`, {
+              headers: { "access_token": apiKey.trim() },
+            });
+            if (findRes.ok) {
+              const findData = await findRes.json();
+              if (findData.data && findData.data.length > 0) {
+                asaasCustomerId = findData.data[0].id;
+              }
+            }
+          } catch (findErr) {
+            console.warn("Could not query existing customer by email:", findErr);
+          }
+        }
 
         if (asaasCustomerId) {
           // 2. Create Payment / Subscription on Asaas
+
           const payRes = await fetch(`${baseUrl}/payments`, {
             method: "POST",
             headers: {
@@ -314,11 +333,20 @@ app.post("/api/asaas/simulate-payment", (req, res) => {
 // Asaas Webhook receiver
 app.post("/api/asaas/webhook", (req, res) => {
   try {
+    const webhookToken = process.env.ASAAS_WEBHOOK_TOKEN;
+    const receivedToken = req.headers["asaas-access-token"];
+
+    if (webhookToken && receivedToken && receivedToken !== webhookToken) {
+      console.warn("[ASAAS WEBHOOK] Token de autenticação inválido.");
+      return res.status(401).json({ error: "Unauthorized webhook token" });
+    }
+
     const { event, payment } = req.body;
     console.log(`[ASAAS WEBHOOK] Evento recebido: ${event}`, payment?.id);
 
     if (payment && payment.id) {
       const pmt = paymentsStore.get(payment.id) || {};
+
       if (event === "PAYMENT_CONFIRMED" || event === "PAYMENT_RECEIVED") {
         pmt.status = "CONFIRMED";
       } else if (event === "PAYMENT_OVERDUE") {
@@ -338,9 +366,13 @@ app.post("/api/asaas/webhook", (req, res) => {
 async function startServer() {
   if (process.env.NODE_ENV !== "production") {
     const vite = await createViteServer({
-      server: { middlewareMode: true },
+      server: {
+        middlewareMode: true,
+        hmr: false,
+      },
       appType: "spa",
     });
+
     app.use(vite.middlewares);
   } else {
     const distPath = path.join(process.cwd(), "dist");

@@ -6,8 +6,9 @@ export default async function handler(req: any, res: any) {
   try {
     const { userId, userEmail, userName, userCpfCnpj, userPhone, planId, billingType, config } = req.body;
     const apiKey = config?.apiKey || process.env.ASAAS_API_KEY;
-    const isProd = config?.environment === 'production' || process.env.ASAAS_ENV === 'production';
+    const isProd = config?.environment === 'production' || process.env.ASAAS_ENV === 'production' || Boolean(apiKey && apiKey.includes('prod'));
     const baseUrl = isProd ? "https://api.asaas.com/v3" : "https://sandbox.asaas.com/api/v3";
+
 
     const planPrices: Record<string, number> = {
       FREE: 0,
@@ -39,10 +40,28 @@ export default async function handler(req: any, res: any) {
         });
 
         const custData = await custRes.json();
-        const asaasCustomerId = custData.id;
+        let asaasCustomerId = custData.id;
+
+        // If customer already exists with this email, fetch existing customer ID
+        if (!asaasCustomerId && userEmail) {
+          try {
+            const findRes = await fetch(`${baseUrl}/customers?email=${encodeURIComponent(userEmail)}`, {
+              headers: { "access_token": apiKey.trim() },
+            });
+            if (findRes.ok) {
+              const findData = await findRes.json();
+              if (findData.data && findData.data.length > 0) {
+                asaasCustomerId = findData.data[0].id;
+              }
+            }
+          } catch (findErr) {
+            console.warn("Could not query existing customer by email:", findErr);
+          }
+        }
 
         if (asaasCustomerId) {
           const payRes = await fetch(`${baseUrl}/payments`, {
+
             method: "POST",
             headers: {
               "Content-Type": "application/json",
