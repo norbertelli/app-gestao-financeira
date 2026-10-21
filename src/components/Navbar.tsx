@@ -197,15 +197,17 @@ export const Navbar: React.FC<NavbarProps> = ({
               <span className="xs:hidden">Colar</span>
             </button>
 
-            {/* Testes CRUD (3 Perfis) Direct Button */}
-            <button
-              onClick={() => setIsRoleCrudModalOpen(true)}
-              className="hidden lg:inline-flex items-center gap-1.5 px-3 py-1.5 bg-gradient-to-r from-emerald-500/10 via-teal-500/10 to-indigo-500/10 hover:from-emerald-500/20 hover:to-indigo-500/20 text-emerald-300 border border-emerald-500/40 rounded-xl text-xs font-bold transition-all hover:scale-[1.02] active:scale-[0.98] cursor-pointer"
-              title="Executar bateria de testes CRUD e RBAC para Usuário Comum, Administrador e Super Admin"
-            >
-              <ShieldCheck className="w-4 h-4 text-emerald-400" />
-              <span>Testes CRUD (3 Perfis)</span>
-            </button>
+            {/* Testes CRUD (3 Perfis) Direct Button - Apenas Administrador */}
+            {isAdmin && (
+              <button
+                onClick={() => setIsRoleCrudModalOpen(true)}
+                className="hidden lg:inline-flex items-center gap-1.5 px-3 py-1.5 bg-gradient-to-r from-emerald-500/10 via-teal-500/10 to-indigo-500/10 hover:from-emerald-500/20 hover:to-indigo-500/20 text-emerald-300 border border-emerald-500/40 rounded-xl text-xs font-bold transition-all hover:scale-[1.02] active:scale-[0.98] cursor-pointer"
+                title="Executar bateria de testes CRUD e RBAC para Usuário Comum, Administrador e Super Admin"
+              >
+                <ShieldCheck className="w-4 h-4 text-emerald-400" />
+                <span>Testes CRUD (3 Perfis)</span>
+              </button>
+            )}
 
             {/* Tabela de Usuários (Admin Direct Button) */}
             {isAdmin && (
@@ -339,22 +341,24 @@ export const Navbar: React.FC<NavbarProps> = ({
                       {activeTab === 'security' && <Check className="w-4 h-4 text-white" />}
                     </button>
 
-                    {/* Bateria de Testes CRUD (3 Perfis) */}
-                    <button
-                      onClick={() => {
-                        setIsRoleCrudModalOpen(true);
-                        setShowSettingsMenu(false);
-                      }}
-                      className="w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-semibold bg-gradient-to-r from-emerald-500/10 to-indigo-500/10 hover:from-emerald-500/20 hover:to-indigo-500/20 text-emerald-300 border border-emerald-500/30 transition-colors cursor-pointer"
-                    >
-                      <div className="flex items-center gap-2.5">
-                        <ShieldCheck className="w-4 h-4 text-emerald-400" />
-                        <span>Bateria Testes CRUD (3 Perfis)</span>
-                      </div>
-                      <span className="text-[9px] font-black uppercase px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/40">
-                        12 Testes
-                      </span>
-                    </button>
+                    {/* Bateria de Testes CRUD (3 Perfis) - Apenas Administrador */}
+                    {isAdmin && (
+                      <button
+                        onClick={() => {
+                          setIsRoleCrudModalOpen(true);
+                          setShowSettingsMenu(false);
+                        }}
+                        className="w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-semibold bg-gradient-to-r from-emerald-500/10 to-indigo-500/10 hover:from-emerald-500/20 hover:to-indigo-500/20 text-emerald-300 border border-emerald-500/30 transition-colors cursor-pointer"
+                      >
+                        <div className="flex items-center gap-2.5">
+                          <ShieldCheck className="w-4 h-4 text-emerald-400" />
+                          <span>Bateria Testes CRUD (3 Perfis)</span>
+                        </div>
+                        <span className="text-[9px] font-black uppercase px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/40">
+                          Admin
+                        </span>
+                      </button>
+                    )}
 
                     {/* Planos & Assinatura */}
                     <button
@@ -543,10 +547,12 @@ export const Navbar: React.FC<NavbarProps> = ({
         </nav>
       </div>
 
-      <RoleCrudTestModal
-        isOpen={isRoleCrudModalOpen}
-        onClose={() => setIsRoleCrudModalOpen(false)}
-      />
+      {isAdmin && (
+        <RoleCrudTestModal
+          isOpen={isRoleCrudModalOpen}
+          onClose={() => setIsRoleCrudModalOpen(false)}
+        />
+      )}
     </header>
   );
 };

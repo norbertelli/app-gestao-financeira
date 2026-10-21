@@ -38,7 +38,7 @@ export const RoleCrudTestModal: React.FC<RoleCrudTestModalProps> = ({
   isOpen,
   onClose,
 }) => {
-  const { userRole, switchRoleForTesting } = useAuth();
+  const { userRole, switchRoleForTesting, isAdmin } = useAuth();
 
   const [isRunning, setIsRunning] = useState(false);
   const [activeView, setActiveView] = useState<'STEPS' | 'ERROR_LOG' | 'SWITCHER'>('STEPS');
@@ -52,7 +52,8 @@ export const RoleCrudTestModal: React.FC<RoleCrudTestModalProps> = ({
   const [selectedRoleFilter, setSelectedRoleFilter] = useState<'ALL' | 'user' | 'admin' | 'super_admin'>('ALL');
   const [switchingRole, setSwitchingRole] = useState<UserRole | null>(null);
 
-  if (!isOpen) return null;
+  // Apenas usuário administrador pode acessar a bateria de testes
+  if (!isOpen || !isAdmin) return null;
 
   const handleRunTests = async () => {
     setIsRunning(true);

@@ -358,13 +358,17 @@ export const SecurityAuditView: React.FC<SecurityAuditViewProps> = ({
           </div>
 
           <div className="flex flex-wrap items-center gap-3">
-            <button
-              onClick={() => setIsRoleTestModalOpen(true)}
-              className="inline-flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-emerald-500 via-teal-500 to-emerald-600 hover:from-emerald-400 hover:to-teal-500 text-slate-950 font-black rounded-xl text-xs sm:text-sm shadow-lg shadow-emerald-950/40 transition-all hover:scale-105 active:scale-95 cursor-pointer"
-            >
-              <ShieldCheck className="w-4 h-4 fill-slate-950" />
-              <span>Testes CRUD 3 Perfis (User/Admin/SuperAdmin)</span>
-            </button>
+            {/* Bateria de Testes CRUD 3 Perfis - Exclusivo para Administrador */}
+            {isAdmin && (
+              <button
+                onClick={() => setIsRoleTestModalOpen(true)}
+                className="inline-flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-emerald-500 via-teal-500 to-emerald-600 hover:from-emerald-400 hover:to-teal-500 text-slate-950 font-black rounded-xl text-xs sm:text-sm shadow-lg shadow-emerald-950/40 transition-all hover:scale-105 active:scale-95 cursor-pointer"
+                title="Executar bateria de testes CRUD e RBAC (Acesso Restrito ao Administrador)"
+              >
+                <ShieldCheck className="w-4 h-4 fill-slate-950" />
+                <span>Testes CRUD 3 Perfis (Admin)</span>
+              </button>
+            )}
 
             <button
               onClick={handleRunSecurityScan}
@@ -1032,11 +1036,13 @@ export const SecurityAuditView: React.FC<SecurityAuditViewProps> = ({
         </div>
       )}
 
-      {/* Modal Interativo de Testes CRUD 3 Perfis */}
-      <RoleCrudTestModal
-        isOpen={isRoleTestModalOpen}
-        onClose={() => setIsRoleTestModalOpen(false)}
-      />
+      {/* Modal Interativo de Testes CRUD 3 Perfis - Exclusivo para Administrador */}
+      {isAdmin && (
+        <RoleCrudTestModal
+          isOpen={isRoleTestModalOpen}
+          onClose={() => setIsRoleTestModalOpen(false)}
+        />
+      )}
     </div>
   );
 };
