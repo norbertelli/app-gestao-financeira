@@ -431,56 +431,58 @@ export const Navbar: React.FC<NavbarProps> = ({
                     </a>
 
 
-                    {/* Role Testing Quick Switcher */}
-                    <div className="pt-2 border-t border-slate-700/60 mt-1">
-                      <p className="text-[10px] uppercase font-black text-slate-400 px-1 mb-1.5 flex items-center justify-between">
-                        <span className="flex items-center gap-1">
-                          <Shield className="w-3 h-3 text-amber-400" />
-                          <span>Alternar Perfil (Teste):</span>
-                        </span>
-                      </p>
-                      <div className="grid grid-cols-3 gap-1">
-                        <button
-                          onClick={async () => {
-                            await switchRoleForTesting('user');
-                            setShowSettingsMenu(false);
-                          }}
-                          className={`py-1 px-1 text-[10px] font-bold rounded-lg border text-center transition-all cursor-pointer ${
-                            userRole === 'user'
-                              ? 'bg-indigo-600 text-white border-indigo-500 shadow-xs'
-                              : 'bg-slate-900/60 text-slate-300 border-slate-700 hover:bg-slate-700'
-                          }`}
-                        >
-                          Usuário
-                        </button>
-                        <button
-                          onClick={async () => {
-                            await switchRoleForTesting('admin');
-                            setShowSettingsMenu(false);
-                          }}
-                          className={`py-1 px-1 text-[10px] font-bold rounded-lg border text-center transition-all cursor-pointer ${
-                            userRole === 'admin'
-                              ? 'bg-emerald-600 text-white border-emerald-500 shadow-xs'
-                              : 'bg-slate-900/60 text-slate-300 border-slate-700 hover:bg-slate-700'
-                          }`}
-                        >
-                          Admin
-                        </button>
-                        <button
-                          onClick={async () => {
-                            await switchRoleForTesting('super_admin');
-                            setShowSettingsMenu(false);
-                          }}
-                          className={`py-1 px-1 text-[10px] font-bold rounded-lg border text-center transition-all cursor-pointer ${
-                            userRole === 'super_admin'
-                              ? 'bg-gradient-to-r from-amber-500 to-purple-600 text-white border-amber-400 shadow-xs'
-                              : 'bg-slate-900/60 text-slate-300 border-slate-700 hover:bg-slate-700'
-                          }`}
-                        >
-                          Super Admin
-                        </button>
+                    {/* Role Testing Quick Switcher - Apenas Administradores */}
+                    {isAdmin && (
+                      <div className="pt-2 border-t border-slate-700/60 mt-1">
+                        <p className="text-[10px] uppercase font-black text-slate-400 px-1 mb-1.5 flex items-center justify-between">
+                          <span className="flex items-center gap-1">
+                            <Shield className="w-3 h-3 text-amber-400" />
+                            <span>Alternar Perfil (Teste):</span>
+                          </span>
+                        </p>
+                        <div className="grid grid-cols-3 gap-1">
+                          <button
+                            onClick={async () => {
+                              await switchRoleForTesting('user');
+                              setShowSettingsMenu(false);
+                            }}
+                            className={`py-1 px-1 text-[10px] font-bold rounded-lg border text-center transition-all cursor-pointer ${
+                              userRole === 'user'
+                                ? 'bg-indigo-600 text-white border-indigo-500 shadow-xs'
+                                : 'bg-slate-900/60 text-slate-300 border-slate-700 hover:bg-slate-700'
+                            }`}
+                          >
+                            Usuário
+                          </button>
+                          <button
+                            onClick={async () => {
+                              await switchRoleForTesting('admin');
+                              setShowSettingsMenu(false);
+                            }}
+                            className={`py-1 px-1 text-[10px] font-bold rounded-lg border text-center transition-all cursor-pointer ${
+                              userRole === 'admin'
+                                ? 'bg-emerald-600 text-white border-emerald-500 shadow-xs'
+                                : 'bg-slate-900/60 text-slate-300 border-slate-700 hover:bg-slate-700'
+                            }`}
+                          >
+                            Admin
+                          </button>
+                          <button
+                            onClick={async () => {
+                              await switchRoleForTesting('super_admin');
+                              setShowSettingsMenu(false);
+                            }}
+                            className={`py-1 px-1 text-[10px] font-bold rounded-lg border text-center transition-all cursor-pointer ${
+                              userRole === 'super_admin'
+                                ? 'bg-gradient-to-r from-amber-500 to-purple-600 text-white border-amber-400 shadow-xs'
+                                : 'bg-slate-900/60 text-slate-300 border-slate-700 hover:bg-slate-700'
+                            }`}
+                          >
+                            Super Admin
+                          </button>
+                        </div>
                       </div>
-                    </div>
+                    )}
 
                     {/* Logout Option */}
                     <div className="pt-1.5 border-t border-slate-700/60 mt-1">
