@@ -10,6 +10,8 @@ import {
   signOut,
   onAuthStateChanged,
   User,
+  sendPasswordResetEmail,
+  updatePassword,
 } from 'firebase/auth';
 import {
   getFirestore,
@@ -1150,6 +1152,128 @@ export const clearStressTestDataFromFirestore = async (
     return stressDocs.length;
   } catch (error) {
     console.error('Error clearing stress test data from Firestore:', error);
+    throw error;
+  }
+};
+
+/**
+ * Envia e-mail oficial do Firebase Authentication para redefinição segura de senha
+ */
+export const sendResetPasswordEmail = async (email: string): Promise<void> => {
+  if (!email || !email.trim()) {
+    throw new Error('Por favor, informe um endereço de e-mail válido.');
+  }
+  try {
+    await sendPasswordResetEmail(auth, email.trim());
+  } catch (error) {
+    console.error('Error sending password reset email:', error);
+    throw error;
+  }
+};
+
+/**
+ * Atualiza diretamente a senha do usuário autenticado no Firebase Authentication
+ */
+export const changeUserPassword = async (newPassword: string): Promise<void> => {
+  if (!newPassword || newPassword.length < 6) {
+    throw new Error('A nova senha deve ter no mínimo 6 caracteres.');
+  }
+  if (!auth.currentUser) {
+    throw new Error('Nenhum usuário autenticado no momento para alteração de senha.');
+  }
+  try {
+    await updatePassword(auth.currentUser, newPassword);
+  } catch (error) {
+    console.error('Error updating user password:', error);
+    throw error;
+  }
+};
+
+/**
+ * Zera todos os dados financeiros do usuário corrente no Firestore:
+ * - Contas bancárias
+ * - Transações bancárias
+ * - Cartões de crédito
+ * - Transações de cartões
+ * - Dívidas e empréstimos
+ * - Investimentos
+ * - Transações de investimentos
+ * - Contas a pagar/receber (pagamentos futuros)
+ * - Conexões Open Finance
+ * - Logs de notificações
+ *
+ * PRESERVA INTEGRALMENTE:
+ * - Tabela / dados de Usuário (users/{userId})
+ * - Tabela / subcoleção de Categorias (users/{userId}/categories)
+ */
+export const zeroUserFinancialData = async (
+  userId: string,
+  onProgress?: (collName: string, deletedCount: number) => void
+): Promise<{ totalDeleted: number }> => {
+  if (!userId) {
+    throw new Error('ID de usuário obrigatório para zerar os dados.');
+  }
+
+  // Lista estrita de coleções financeiras a serem zeradas (SEM 'categories' e SEM deletar o user document)
+  const collectionsToZero = [
+    'futurePayments',
+    'accounts',
+    'bankTransactions',
+    'cards',
+    'cardTransactions',
+    'debts',
+    'investments',
+    'investmentTransactions',
+    'openFinanceConnections',
+    'notificationLogs',
+  ];
+
+  let totalDeleted = 0;
+
+  try {
+    for (const collName of collectionsToZero) {
+      const colRef = collection(db, 'users', userId, collName);
+      const snap = await getDocs(colRef);
+      if (snap.empty) continue;
+
+      const docIds: string[] = [];
+      snap.forEach((d) => docIds.push(d.id));
+
+      const CHUNK_SIZE = 400;
+      for (let i = 0; i < docIds.length; i += CHUNK_SIZE) {
+        const chunk = docIds.slice(i, i + CHUNK_SIZE);
+        const batch = writeBatch(db);
+        for (const id of chunk) {
+          batch.delete(doc(db, 'users', userId, collName, id));
+        }
+        await batch.commit();
+      }
+
+      totalDeleted += docIds.length;
+      if (onProgress) {
+        onProgress(collName, docIds.length);
+      }
+    }
+
+    // Registrar no documento do usuário a data do zeramento sem apagar o cadastro
+    try {
+      const userDocRef = doc(db, 'users', userId);
+      await setDoc(
+        userDocRef,
+        {
+          lastZeroedAt: new Date().toISOString(),
+          hasInitializedData: true,
+        },
+        { merge: true }
+      );
+    } catch (e) {
+      console.warn('Could not update user metadata timestamp:', e);
+    }
+
+    return { totalDeleted };
+  } catch (error) {
+    console.error('Error zeroing user financial data:', error);
+    handleFirestoreError(error, OperationType.DELETE, `users/${userId}/zeroFinancialData`);
     throw error;
   }
 };

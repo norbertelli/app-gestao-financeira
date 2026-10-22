@@ -11,6 +11,8 @@ import {
   saveUserProfile,
   testConnection,
   safeStorage,
+  sendResetPasswordEmail,
+  changeUserPassword,
 } from '../services/firebase';
 import { recordAuditEvent } from '../services/auditLogger';
 
@@ -34,6 +36,8 @@ interface AuthContextType {
   switchRoleForTesting: (role: UserRole) => Promise<void>;
   logout: () => Promise<void>;
   triggerSyncNotification: () => void;
+  sendPasswordReset: (email: string) => Promise<void>;
+  updateUserPassword: (newPassword: string) => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -353,6 +357,27 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     setLastSyncAt(new Date());
   };
 
+  const sendPasswordReset = async (emailToReset: string) => {
+    await sendResetPasswordEmail(emailToReset);
+    await recordAuditEvent(
+      'PASSWORD_RESET_REQUESTED',
+      'AUTH',
+      'INFO',
+      `Solicitação de recuperação de senha enviada para: ${emailToReset}`
+    );
+  };
+
+  const updateUserPassword = async (newPassword: string) => {
+    await changeUserPassword(newPassword);
+    await recordAuditEvent(
+      'PASSWORD_CHANGED',
+      'AUTH',
+      'INFO',
+      'Senha de acesso atualizada pelo usuário no sistema.',
+      user || undefined
+    );
+  };
+
   return (
     <AuthContext.Provider
       value={{
@@ -373,6 +398,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         switchRoleForTesting,
         logout,
         triggerSyncNotification,
+        sendPasswordReset,
+        updateUserPassword,
       }}
     >
       {children}

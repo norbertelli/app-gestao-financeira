@@ -45,6 +45,7 @@ import {
   Receipt,
   X,
   Share2,
+  Trash2,
 } from 'lucide-react';
 
 import {
@@ -76,6 +77,7 @@ interface DashboardViewProps {
   onOpenStatementModal: (type: 'bank' | 'card' | 'investment', entity: any) => void;
   onOpenSmartReader: () => void;
   onNavigateTab?: (tab: any) => void;
+  onZeroDashboard?: () => void;
 }
 
 export const DashboardView: React.FC<DashboardViewProps> = ({
@@ -90,6 +92,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   onOpenStatementModal,
   onOpenSmartReader,
   onNavigateTab,
+  onZeroDashboard,
 }) => {
   const [showUrgentModal, setShowUrgentModal] = useState(false);
   const [selectedDashboardCardId, setSelectedDashboardCardId] = useState<string>('ALL');
@@ -251,6 +254,19 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               <Share2 className="w-4 h-4 text-emerald-400" />
               <span>Indicar no WhatsApp</span>
             </button>
+
+            {/* Botão Zerar Dashboard */}
+            {onZeroDashboard && (
+              <button
+                id="btn-dashboard-zero-data"
+                onClick={onZeroDashboard}
+                className="inline-flex items-center gap-2 px-3 py-2.5 sm:px-4 sm:py-2.5 bg-rose-500/10 hover:bg-rose-500/20 text-rose-300 font-bold rounded-xl text-xs sm:text-sm border border-rose-500/30 transition-all hover:scale-105 active:scale-95 cursor-pointer shadow-md"
+                title="Zerar dados financeiros do Dashboard mantendo Categorias e Usuário"
+              >
+                <Trash2 className="w-4 h-4 text-rose-400" />
+                <span>Zerar Dashboard</span>
+              </button>
+            )}
 
 
             <button
