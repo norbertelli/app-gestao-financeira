@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { Analytics } from '@vercel/analytics/react';
 import {
   ActiveTab,
   BankAccount,
@@ -1112,6 +1113,9 @@ export default function App() {
 
       {/* Floating WhatsApp Support Button */}
       <FloatingWhatsAppSupport />
+
+      {/* Vercel Web Analytics */}
+      <Analytics />
     </div>
 
 
